@@ -15,7 +15,7 @@ max_iter = 100
 
 DATA_FOLDER = 'data/'     # your data folder name
 DATA_FILE_NAME = 'warm_start' # your data file name
-save_warm_start = 0
+save_warm_start = 1
 use_warm_start = 0
 if use_warm_start:
     INITIAL_GUESS_FILE = DATA_FILE_NAME

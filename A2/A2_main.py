@@ -10,13 +10,13 @@ import orc.utils.plot_utils as plut
 import A2_conf as conf
 from single_shooting_problem import SingleShootingProblem
 
-from orc.A2.ode import ODEPendulum
-from orc.A2.cost_functions import OCPFinalCostState, OCPRunningCostQuadraticControl
-from orc.A2.inequality_constraints import OCPJointPathBounds, OCPJointFinalBounds, OCPVFinalBounds
+from orc.optimal_control.A2.ode import ODEPendulum
+from orc.optimal_control.A2.cost_functions import OCPFinalCostState, OCPRunningCostQuadraticControl
+from orc.optimal_control.A2.inequality_constraints import OCPJointPathBounds, OCPJointFinalBounds, OCPVFinalBounds
 
 np.set_printoptions(precision=3, linewidth=200, suppress=True)
 
-PLOT_STUFF = 0
+PLOT_STUFF = 1
 
 dt = conf.dt                 
 T = conf.T
@@ -27,15 +27,15 @@ n = nq+nv                       # state size
 m = conf.nu                     # control size
 
 # TODO implement a search strategy to select n_ics initial states to be checked (for example uniform random sampling, grid-based sampling, etc.)
-n_ics =           # TODO number of initial states to be checked
-x_0_arr =         # TODO matrix of the initial states to be checked (dim: n_ics x n)
+n_ics = 100                                                              # TODO number of initial states to be checked
+x_0_arr = np.random.uniform(low=-1.0, high=1.0, size=(n_ics, n))        # TODO matrix of the initial states to be checked (dim: n_ics x n)
 
 # Initialize viable and non-viable state lists
 viable_states = []
 no_viable_states = []
 
 for i in range(int(n_ics)):
-    x0 = x0_arr[i,:]
+    x0 = x_0_arr[i,:]
     q0 = x0[:nq]
 
     # compute initial guess for control inputs
@@ -148,7 +148,7 @@ for i in range(int(n_ics)):
     else:
         print('{} is a non-viable x0'.format(x0))
         # Save non-viable states
-        no_viable_states.append()         # TODO Save non viable states
+        no_viable_states.append(x0.copy())         # TODO Save non viable states
         
         
 
