@@ -21,7 +21,7 @@ class ODEPendulum(ODE):
 
         if(jacobian):
             # Numerical differentiation for Jacobian with respect to x
-            epsilon_x = 1e-6
+            epsilon_x = 1e-7
             df_dx = np.zeros((2, 2))
             for i in range(2):
                 x_perturbed = x.copy()
