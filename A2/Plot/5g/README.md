@@ -15,6 +15,13 @@ In this folder, you will find plots obtained by varying position or velocity lim
 - **Position Range:** 3π/4 to 5π/4 (90 points)
 - **Velocity Range:** -10 to 10 (50 points)
 
+
+## 4500p-5g
+### System Parameters:                                   Grid Configuration:
+- **Position Limit:** 3π/4 to 5π/4                     - **Total Points:** 4500
+- **Velocity Limit:** ±10                                       - **Position Range:** 3π/4 to 5π/4 (90 points)
+- **Control Bound:** ±5g                                    - **Velocity Range:** -10 to 10 (50 points)
+
 ---
 
 ## 4500p-5g
