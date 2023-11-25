@@ -21,33 +21,23 @@ class OCPJointFinalBounds:
         ''' Compute the cost given the state x '''
         q = x[:self.nq]
         v = x[self.nq:]
-        ineq = np.concatenate([
-            q - self.q_min,
-            -q + self.q_max,
-            v - self.dq_min,
-            -v + self.dq_max
-        ])
+        ineq = np.concatenate((q-self.q_min, self.q_max-q, v-self.dq_min, self.dq_max-v))        # implement the inequality constraint
         return ineq
     
     def compute_w_gradient(self, x, recompute=True):
         ''' Compute the cost and its gradient given the final state x '''
         q = x[:self.nq]
         v = x[self.nq:]
-        ineq = np.concatenate([
-            q - self.q_min,
-            -q + self.q_max,
-            v - self.dq_min,
-            -v + self.dq_max
-        ])
+        ineq = np.concatenate((q-self.q_min, self.q_max-q, v-self.dq_min, self.dq_max-v))        # TODO implement the inequality constraint
         
         # compute Jacobian
         nx = x.shape[0]
-        grad_x = np.zeros((2 * nx, nx))
+        grad_x = np.zeros((2*nx, nx))
         nq = self.nq
-        grad_x[:nq,       :nq] = np.eye(nq)
-        grad_x[nq:2*nq,   :nq] = -np.eye(nq)
-        grad_x[2*nq:3*nq, nq:] = np.eye(nq)
-        grad_x[3*nq:,     nq:] = -np.eye(nq)
+        grad_x[:nq,       :nq] = np.eye(nq)        # TODO implement the jacobian of the inequality constraint
+        grad_x[nq:2*nq,   :nq] = -np.eye(nq)        # TODO implement the jacobian of the inequality constraint
+        grad_x[2*nq:3*nq, nq:] = np.eye(nq)        # TODO implement the jacobian of the inequality constraint
+        grad_x[3*nq:,     nq:] = -np.eye(nq)        # TODO implement the jacobian of the inequality constraint
 
         return (ineq, grad_x)
 
@@ -56,44 +46,34 @@ class OCPVFinalBounds:
             dq >= dq_min
             -dq >= dq_max
     '''
-    def __init__(self, name, nq, nv, dq_min, dq_max, w_v):
+    def __init__(self, name, nq, nv, dq_min, dq_max):
         self.name = name
         self.nq = nq
         self.nv = nv
         self.dq_min = dq_min
         self.dq_max = dq_max
-        self.w_v = w_v  # Added parameter for quadratic penalty weight on final velocity
         
     def compute(self, x, recompute=True):
         ''' Compute the cost given the state x '''
         q = x[:self.nq]
         v = x[self.nq:]
-        ineq = np.concatenate([
-            v - self.dq_min,
-            -v + self.dq_max
-        ])
-        return ineq + 0.5 * self.w_v * np.dot(v, v)
+        ineq = np.concatenate((np.zeros(np.size(q)), np.zeros(np.size(q)), v-self.dq_min, self.dq_max-v))        # TODO implement the jacobian of the inequality constraint
+        return ineq
     
     def compute_w_gradient(self, x, recompute=True):
         ''' Compute the cost and its gradient given the final state x '''
         q = x[:self.nq]
         v = x[self.nq:]
-        ineq = np.concatenate([
-            v - self.dq_min,
-            -v + self.dq_max
-        ])
+        ineq = np.concatenate((np.zeros(np.size(q)),np.zeros(np.size(q)),v-self.dq_min, self.dq_max-v))         # TODO implement the inequality constraint
         
         # compute Jacobian
         nx = x.shape[0]
-        grad_x = np.zeros((2 * nx, nx))
+        grad_x = np.zeros((2*nx, nx))
         nq = self.nq
-        grad_x[:nq,       :nq] = np.zeros((nq, nq))
-        grad_x[nq:2*nq,   :nq] = np.zeros((nq, nq))
-        grad_x[2*nq:3*nq, nq:] = np.eye(nq)
-        grad_x[3*nq:,     nq:] = -np.eye(nq)
-
-        # Gradient for quadratic penalty term
-        grad_x[2 * nq:3 * nq, self.nq:] = self.w_v * v
+        grad_x[:nq,       :nq] = np.eye(nq)*0        # TODO implement the jacobian of the inequality constraint
+        grad_x[nq:2*nq,   :nq] = -np.eye(nq)*0       # TODO implement the jacobian of the inequality constraint
+        grad_x[2*nq:3*nq, nq:] = np.eye(nq)        # TODO implement the jacobian of the inequality constraint
+        grad_x[3*nq:,     nq:] = -np.eye(nq)        # TODO implement the jacobian of the inequality constraint
 
         return (ineq, grad_x)
 
@@ -117,3 +97,4 @@ class OCPJointPathBounds:
         (ineq, grad_x) = self.c.compute_w_gradient(x, recompute)
         grad_u = np.zeros((ineq.shape[0], u.shape[0]))
         return (ineq, grad_x, grad_u)
+    
