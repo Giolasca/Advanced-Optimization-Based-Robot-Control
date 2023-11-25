@@ -15,15 +15,15 @@ max_iter = 100
 
 DATA_FOLDER = 'data/'     # your data folder name
 DATA_FILE_NAME = 'warm_start' # your data file name
-save_warm_start = 0
+save_warm_start = 1
 use_warm_start = 0
 if use_warm_start:
     INITIAL_GUESS_FILE = DATA_FILE_NAME
 else:
     INITIAL_GUESS_FILE = None
 
-lowerPositionLimit = 3/4*np.pi      # min joint position
-upperPositionLimit = 5/4*np.pi      # max joint position
+lowerPositionLimit = 2/3*np.pi      # min joint position
+upperPositionLimit = 4/3*np.pi      # max joint position
 upperVelocityLimit = 10             # min joint velocity
 lowerVelocityLimit = -10            # min joint velocity
 lowerControlBound    = -9.81        # lower bound joint torque
@@ -31,7 +31,7 @@ upperControlBound    = 9.81         # upper bound joint torque
 
 activate_joint_bounds = 1           # joint pos/vel bounds
 
-activate_equilibrium_ineq = 0       # equilibrium constraint (inequality)
+activate_equilibrium_ineq = 1       # equilibrium constraint (inequality)
 eps_thr = 1e-7                      # threshold for equilibrium constraint (inequality)
 
 weight_eq_dq = 0                    # final cost weight for joint velocities (to ensure an equilibrium is reached) - ex. 1e-2

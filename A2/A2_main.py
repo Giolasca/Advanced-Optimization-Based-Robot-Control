@@ -10,9 +10,9 @@ import orc.utils.plot_utils as plut
 import A2_conf as conf
 from single_shooting_problem import SingleShootingProblem
 
-from orc.A2.ode import ODEPendulum
-from orc.A2.cost_functions import OCPFinalCostState, OCPRunningCostQuadraticControl
-from orc.A2.inequality_constraints import OCPJointPathBounds, OCPJointFinalBounds, OCPVFinalBounds
+from orc.optimal_control.A2.ode import ODEPendulum
+from orc.optimal_control.A2.cost_functions import OCPFinalCostState, OCPRunningCostQuadraticControl
+from orc.optimal_control.A2.inequality_constraints import OCPJointPathBounds, OCPJointFinalBounds, OCPVFinalBounds
 
 np.set_printoptions(precision=3, linewidth=200, suppress=True)
 
@@ -26,16 +26,46 @@ nq, nv = conf.nq, conf.nv
 n = nq+nv                       # state size
 m = conf.nu                     # control size
 
-# TODO implement a search strategy to select n_ics initial states to be checked (for example uniform random sampling, grid-based sampling, etc.)
-n_ics =           # TODO number of initial states to be checked
-x_0_arr =         # TODO matrix of the initial states to be checked (dim: n_ics x n)
+
+rand = 0
+if(rand):
+    # TODO implement a search strategy to select n_ics initial states to be checked (for example uniform random sampling, grid-based sampling, etc.)
+    n_ics = 100                                                              # TODO number of initial states to be checked
+    x_sample = np.zeros((n_ics,n))        # TODO matrix of the initial states to be checked (dim: n_ics x n)
+
+    for i in range(int(n_ics)):
+            x_1 = random.uniform(conf.lowerPositionLimit,conf.upperPositionLimit)
+            x_2 = random.uniform(conf.lowerVelocityLimit, conf.upperVelocityLimit)
+            x_sample[i][0] = x_1
+            x_sample[i][1] = x_2
+            
+    x_0_arr = x_sample
+    print("Size of x_0_arr: ", x_0_arr.shape)
+else:
+    n_pos = 32
+    n_vel = 32
+    n_ics = n_pos*n_vel
+    possible_q = np.linspace(conf.lowerPositionLimit,conf.upperPositionLimit, num=n_pos)
+    possible_v = np.linspace(conf.lowerVelocityLimit, conf.upperVelocityLimit, num=n_vel)
+    x_0_arr = np.zeros((n_ics, n))
+
+    j = k = 0
+    for i in range(n_ics):
+        x_0_arr[i,:] = np.array([possible_q[j], possible_v[k]])
+        # x_0_arr[i,:] = np.array([possible_q[i], 0])
+        k += 1
+        if (k == n_vel):
+            k = 0
+            j += 1
+    print("Size of x_0_arr: ", x_0_arr.shape)
+print(x_0_arr)
 
 # Initialize viable and non-viable state lists
 viable_states = []
 no_viable_states = []
 
 for i in range(int(n_ics)):
-    x0 = x0_arr[i,:]
+    x0 = x_0_arr[i,:]
     q0 = x0[:nq]
 
     # compute initial guess for control inputs
@@ -93,7 +123,7 @@ for i in range(int(n_ics)):
 
         print('{} is a viable x0 - final velocity: {:.3f} rad/s'.format(x0, X[-1,1]))
         # Save viable states
-        viable_states.append()         # TODO Save viable states
+        viable_states.append(x0)         # TODO Save viable states
 
         # SAVE THE RESULTS
         if(not os.path.exists(conf.DATA_FOLDER)) and conf.save_warm_start:
@@ -148,7 +178,7 @@ for i in range(int(n_ics)):
     else:
         print('{} is a non-viable x0'.format(x0))
         # Save non-viable states
-        no_viable_states.append()         # TODO Save non viable states
+        no_viable_states.append(x0)         # TODO Save non viable states
         
         
 

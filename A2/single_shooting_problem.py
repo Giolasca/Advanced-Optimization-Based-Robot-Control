@@ -5,7 +5,7 @@ from scipy.optimize import minimize
 #from colorama import Fore, Back, Style
 #from termcolor import colored, cprint
 
-from orc.A2.numerical_integration import Integrator
+from orc.optimal_control.A2.numerical_integration import Integrator
 
 class Empty:
     def __init__(self):
@@ -420,7 +420,7 @@ class SingleShootingProblem:
         if(use_finite_diff):
             cost_func = self.compute_cost_w_gradient_fd
             # TODO Add the control bounds
-            r = minimize(cost_func, y0, jac=True, method=method, 
+            r = minimize(cost_func, y0, jac=True, method=method, bounds = bnds,
                      callback=self.clbk, tol=1e-6, options={'maxiter': max_iter, 'disp': True},
                      constraints=[
                                      {'type': 'ineq', 
@@ -432,8 +432,8 @@ class SingleShootingProblem:
         else:
             cost_func = self.compute_cost_w_gradient
             # TODO Add the control bounds
-            r = minimize(cost_func, y0, jac=True, method=method, 
-                         callback=self.clbk, tol=1e-6, options={'maxiter': max_iter, 'disp': False},
+            r = minimize(cost_func, y0, jac=True, method=method, bounds = bnds,
+                        callback=self.clbk, tol=1e-6, options={'maxiter': max_iter, 'disp': False},
                         constraints=[
                                      {'type': 'ineq', 
                                       'fun': self.compute_ineq,
