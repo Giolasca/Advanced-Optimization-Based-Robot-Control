@@ -30,7 +30,7 @@ In this folder, you will find plots obtained by varying position or velocity lim
 
 ---
 
-### 4500p-5g-v:
+### 4500p-5g-vv:
 #### System Parameters:
 -  **Position Limit:** 132° to 228° 
 -  **Velocity Limit:** ±15 
