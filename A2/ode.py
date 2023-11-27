@@ -44,13 +44,9 @@ x = np.array([0.0, 1.0])  # Initial State
 u = 2.0  # Control Input
 t = 0.0  # Time
 
-<<<<<<< Updated upstream
-        return dx
-=======
 result = ode_pendulum.f(x, u, t, jacobian=True)
 dx, df_dx, df_du = result
 
 print("dx:", dx)
 print("Jacobian w.r.t x (df_dx): \n", df_dx)
 print("Jacobian w.r.t u (df_du): \n", df_du)
->>>>>>> Stashed changes
