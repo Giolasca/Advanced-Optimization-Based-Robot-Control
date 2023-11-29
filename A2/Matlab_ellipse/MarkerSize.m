@@ -1,5 +1,5 @@
 % Read the .png image
-img = imread('grid_ineq_pos_aug.png'); % Replace with the path to your image file
+img = imread('4500p-5q.jpg'); % Replace with the path to your image file
 
 % Extract color channels (RGB)
 redChannel = img(:, :, 1);
