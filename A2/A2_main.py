@@ -2,6 +2,7 @@
 import os
 import random
 import numpy as np
+import scipy.io
 
 from numpy.linalg import norm
 import matplotlib.pyplot as plt
@@ -42,11 +43,11 @@ if(rand):
     x_0_arr = x_sample
     print("Size of x_0_arr: ", x_0_arr.shape)
 else:
-    n_pos = 32
-    n_vel = 32
+    n_pos = 90
+    n_vel = 50
     n_ics = n_pos*n_vel
-    possible_q = np.linspace(conf.lowerPositionLimit,conf.upperPositionLimit, num=n_pos)
-    possible_v = np.linspace(conf.lowerVelocityLimit, conf.upperVelocityLimit, num=n_vel)
+    possible_q = np.linspace(conf.lowerPositionLimit, conf.upperPositionLimit, num = n_pos)
+    possible_v = np.linspace(conf.lowerVelocityLimit, conf.upperVelocityLimit, num = n_vel)
     x_0_arr = np.zeros((n_ics, n))
 
     j = k = 0
@@ -58,7 +59,6 @@ else:
             k = 0
             j += 1
     print("Size of x_0_arr: ", x_0_arr.shape)
-print(x_0_arr)
 
 # Initialize viable and non-viable state lists
 viable_states = []
@@ -124,6 +124,10 @@ for i in range(int(n_ics)):
         print('{} is a viable x0 - final velocity: {:.3f} rad/s'.format(x0, X[-1,1]))
         # Save viable states
         viable_states.append(x0)         # TODO Save viable states
+
+        mat_file_path_viable = 'viable.mat'
+        data_dict_viable = {'viable_states': viable_states}
+        scipy.io.savemat(mat_file_path_viable, data_dict_viable)
 
         # SAVE THE RESULTS
         if(not os.path.exists(conf.DATA_FOLDER)) and conf.save_warm_start:

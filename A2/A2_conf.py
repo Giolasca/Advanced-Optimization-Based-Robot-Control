@@ -22,8 +22,8 @@ if use_warm_start:
 else:
     INITIAL_GUESS_FILE = None
 
-lowerPositionLimit = 2/3*np.pi      # min joint position
-upperPositionLimit = 4/3*np.pi      # max joint position
+lowerPositionLimit = 1/2*np.pi      # min joint position
+upperPositionLimit = 3/2*np.pi      # max joint position
 upperVelocityLimit = 10             # min joint velocity
 lowerVelocityLimit = -10            # min joint velocity
 lowerControlBound    = -9.81        # lower bound joint torque
