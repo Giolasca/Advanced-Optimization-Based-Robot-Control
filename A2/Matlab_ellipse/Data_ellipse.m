@@ -20,20 +20,30 @@ fit_ellipse = fit_ellipse(q_viable, v_viable);
 
 % Draw the ellipse
 figure;
-plot(q_viable, v_viable, 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'red');  
+plot(q_viable, v_viable, 'ro', 'MarkerSize', 4, 'MarkerFaceColor', 'red');  
 hold on;
-plot(q_no_viable, v_no_viable, 'bo', 'MarkerSize', 5, 'MarkerFaceColor', 'blue');
+plot(q_no_viable, v_no_viable, 'bo', 'MarkerSize', 4, 'MarkerFaceColor', 'blue');
 draw_ellipse(fit_ellipse.a, fit_ellipse.b, fit_ellipse.phi, fit_ellipse.X0_in, fit_ellipse.Y0_in, 'k');
 xlabel('q[rad]');
 ylabel('dq [rad/s]');
-legend('viable','non viable');
+legend('viable','non viable', 'ellipse');
 
-eq = sprintf('Equation of the ellipse: $\\frac{((x - \\pi) \\cos(%.2f) + y \\sin(%.2f))^2}{%.2f^2} + \\frac{((x - \\pi) \\sin(%.2f) - y \\cos(%.2f))^2}{%.2f^2} = 1$', ...
+xlim([1.56-0.15, 4.73+0.15]);
+ylim([-19, 19]);
+
+% Calculate the area of the ellipse
+ellipse_area = pi * fit_ellipse.a * fit_ellipse.b;
+
+% Display information about the ellipse
+fprintf('Major axis length: %.4f\n', fit_ellipse.a);
+fprintf('Minor axis length: %.4f\n', fit_ellipse.b);
+fprintf('Orientation angle: %.4f radians\n', fit_ellipse.phi);
+fprintf('Area of the ellipse: %.4f\n', ellipse_area);
+
+
+% Display the equation of ellipse
+fprintf('Equation of the ellipse: ((x - π) * cos(%.4f) + (y) * sin(%.4f))^2 / %.4f^2 + ((x - π) * sin(%.4f) - (y) * cos(%.4f))^2 / %.4f^2 = 1\n', ...
         fit_ellipse.phi, fit_ellipse.phi, fit_ellipse.a, fit_ellipse.phi, fit_ellipse.phi, fit_ellipse.b);
-
-fprintf('Equation of the ellipse: ((x - %.4f) * cos(%.4f) + (y - %.4f) * sin(%.4f))^2 / %.4f^2 + ((x - %.4f) * sin(%.4f) - (y - %.4f) * cos(%.4f))^2 / %.4f^2 = 1\n', ...
-        fit_ellipse.X0_in, fit_ellipse.phi, fit_ellipse.Y0_in, fit_ellipse.phi, fit_ellipse.a, ...
-        fit_ellipse.X0_in, fit_ellipse.phi, fit_ellipse.Y0_in, fit_ellipse.phi, fit_ellipse.b);
 
 % Saving image
 set(gcf, 'PaperUnits', 'centimeters');
