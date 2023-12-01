@@ -23,4 +23,4 @@ points{1} = table1;
 points{2} = table2;
 
 % Save the cell into a .mat file
-save('4500p-5q.mat', 'points');
+save('4500p-1g-random', 'points');

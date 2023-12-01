@@ -7,7 +7,7 @@ clc; clear; close all;
 
 %% Load the data
 % File's names
-file_name = {'4500p-5g', '4500p-2q-2v'}; 
+file_name = {'4500p-5g', '4500p-2q-2v', '4500p-1g-random'}; 
 
 % User select a file
 Index_file = listdlg('PromptString', {'Select a file to extract data from:', ''}, ...
@@ -21,6 +21,8 @@ else
         load('4500p-5g.mat');
     case {2}
         load('4500p-2q-2v.mat');
+    case {3}
+        load('4500p-1g-random.mat');
     otherwise
         error('Wrong selection battery.');
     end
@@ -64,9 +66,9 @@ fprintf('Equation of the ellipse: ((x - π) * cos(%.4f) + (y) * sin(%.4f))^2 / %
         fit_ellipse.phi, fit_ellipse.phi, fit_ellipse.a, fit_ellipse.phi, fit_ellipse.phi, fit_ellipse.b);
 
 % Saving image
-set(gcf, 'PaperUnits', 'centimeters');
-set(gcf, 'PaperPosition', [0 0 24 16]); 
-saveas(gcf,file_name{Index_file})
+% set(gcf, 'PaperUnits', 'centimeters');
+% set(gcf, 'PaperPosition', [0 0 24 16]); 
+% saveas(gcf, '4500p-1g-rand.png')
 
 
 function draw_ellipse(a, b, phi, x0, y0, color)
