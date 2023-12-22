@@ -30,8 +30,9 @@ X_test = scaler.transform(X_test)
 def create_model(input_shape):
     model = tf.keras.Sequential([
         layers.Input(shape=(input_shape,)),
-        layers.Dense(64, activation='relu'),
+        layers.Dense(16, activation="relu"),
         layers.Dense(32, activation='relu'),
+        layers.Dense(64, activation='relu'),
         layers.Dense(1, activation='sigmoid')  # Sigmoid for binary classification
     ])
     return model
@@ -42,7 +43,10 @@ model = create_model(input_shape=X_train.shape[1])
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # Train the model
-model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.2)
+model.fit(X_train, y_train, epochs=20, batch_size=100, validation_split=0.2)
+
+# Print model summary
+model.summary()
 
 # Evaluate the model on the test set
 loss, accuracy = model.evaluate(X_test, y_test)
@@ -77,4 +81,38 @@ plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.title('Receiver Operating Characteristic')
 plt.legend(loc='lower right')
+plt.show()
+
+
+# Genera una griglia casuale di coordinate di velocità e posizione
+num_points = 100000
+random_positions = np.random.uniform(low=3/4*np.pi, high=5/4*np.pi, size=(num_points, 1))
+random_velocities = np.random.uniform(low=-10, high=10, size=(num_points, 1))
+
+random_points = np.concatenate([random_positions, random_velocities], axis=1)
+
+# Normalizza i punti
+random_points_normalized = scaler.transform(random_points)
+
+# Fai previsioni con la rete neurale
+predictions = model.predict(random_points_normalized)
+predictions_binary = (predictions > 0.5).astype(int)
+
+# Estrai le coordinate dei punti in ciascuna classe
+viable_points = random_points[predictions_binary.flatten() == 1]
+non_viable_points = random_points[predictions_binary.flatten() == 0]
+
+# Plotta lo scatter plot
+plt.scatter(viable_points[:, 0], viable_points[:, 1], label='Viable', color='red')
+plt.scatter(non_viable_points[:, 0], non_viable_points[:, 1], label='Non Viable', color='blue')
+
+# Imposta etichette e titolo del grafico
+plt.xlabel('Position')
+plt.ylabel('Velocity')
+plt.title('Classification of Random Points')
+
+# Aggiungi la legenda
+plt.legend()
+
+# Mostra il grafico
 plt.show()
