@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.io
 import casadi
 import single_pendulum_dynamics as single_pendulum_dynamics
 import multiprocessing
@@ -161,6 +162,11 @@ if __name__ == "__main__":
             viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
             no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
 
+        # Save the results .mat
+        mat_file_path_viable = 'data.mat'
+        data_dict_viable = {'viable_states': viable_states, 'Non viable states': no_viable_states}
+        scipy.io.savemat(mat_file_path_viable, data_dict_viable)
+        
         # Stop keeping track of time
         end = time.time()
 

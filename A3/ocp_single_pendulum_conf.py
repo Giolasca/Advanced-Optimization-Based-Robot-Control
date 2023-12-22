@@ -1,7 +1,7 @@
 import numpy as np
 
 multiproc = 1
-num_processes = 3
+num_processes = 4
 
 T = 1                   # OCP horizion
 dt = 0.01               # OCP time step

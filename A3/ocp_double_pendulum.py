@@ -47,21 +47,21 @@ class OcpDoublePendulum:
 
         # Cost definition
         self.cost = 0
-        self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
+        #self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
         for i in range(self.N+1):
-            self.running_costs[i] = self.w_v * v[i]*2
+            self.cost += self.w_v * v[i]**2
             if (i<self.N):                           # Check necessary since at the last step it doesn't make sense to consider the input
-                self.running_costs[i] += self.w_u * u[i]**2
-            self.cost += self.running_costs[i]
+                self.cost += self.w_u * u[i]**2
+            #self.cost += self.running_costs[i]
         self.opti.minimize(self.cost)
 
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = doublependulum_dynamics.f(np.array([q[i], v[i]]), u[i])
+            x_next = doublependulum_dynamics.f(np.array([q[i], q[i+self.N], v[i], v[i+self.N]]), u[i])
             # Dynamics imposition
             self.opti.subject_to(q[i+1] == x_next[0])
-            self.opti.subject_to(v[i+1] == x_next[1])
+            self.opti.subject_to(v[i+1] == x_next[2])
         
         # Initial state constraint
         self.opti.subject_to(q[0] == x_init[0])
@@ -70,17 +70,17 @@ class OcpDoublePendulum:
         # Bounds constraints
         for i in range(self.N+1):
             # Position bounds
-            self.opti.subject_to(q[i] <= conf.upperPositionLimit)
-            self.opti.subject_to(q[i] >= conf.lowerPositionLimit)
+            self.opti.subject_to(q[i] <= conf.upperPositionLimit[0])
+            self.opti.subject_to(q[i] >= conf.lowerPositionLimit[0])
 
             # Velocity bounds
-            self.opti.subject_to(v[i] <= conf.upperVelocityLimit)
-            self.opti.subject_to(v[i] >= conf.lowerVelocityLimit)
+            self.opti.subject_to(v[i] <= conf.upperVelocityLimit[0])
+            self.opti.subject_to(v[i] >= conf.lowerVelocityLimit[0])
             
             if (i<self.N):
                 # Control bounds
-                self.opti.subject_to(u[i] <= conf.upperControlBound)
-                self.opti.subject_to(u[i] >= conf.lowerControlBound)
+                self.opti.subject_to(u[i] <= conf.upperControlBound[0])
+                self.opti.subject_to(u[i] >= conf.lowerControlBound[0])
 
         return self.opti.solve()
 
@@ -96,23 +96,25 @@ if __name__ == "__main__":
     n_pos = 101
     n_vel = 101
     n_ics = n_pos * n_vel
-    possible_q = np.linspace(conf.lowerPositionLimit, conf.upperPositionLimit, num=n_pos)
-    possible_v = np.linspace(conf.lowerVelocityLimit, conf.upperVelocityLimit, num=n_vel)
-    state_array = np.zeros((n_ics, 2))
+    possible_q1 = np.linspace(conf.lowerPositionLimit[0], conf.upperPositionLimit[0], num=n_pos)
+    possible_v1 = np.linspace(conf.lowerVelocityLimit[0], conf.upperVelocityLimit[0], num=n_vel)
+    possible_q2 = np.linspace(conf.lowerPositionLimit[1], conf.upperPositionLimit[1], num=n_pos)
+    possible_v2 = np.linspace(conf.lowerVelocityLimit[1], conf.upperVelocityLimit[1], num=n_vel)
+    state_array = np.zeros((n_ics, 4))
 
     j = k = 0
     for i in range (n_ics):
-        state_array[i,:] = np.array([possible_q[j], possible_v[k]])
+        state_array[i,:] = np.array([possible_q1[j], possible_q2[j], possible_v1[k], possible_v2[k]])
         k += 1
         if (k == n_vel):
             k = 0
             j += 1
 
     # Instance of OCP solver
-    ocp = OcpDoublePendulum()
+    ocp_double_pendulum = OcpDoublePendulum()
 
     # Function definition to run in a process
-    def ocp_function(index):
+    def ocp_function_double_pendulum(index):
         # I create empy lists to store viable and non viable states
         viable = []
         no_viable = []
@@ -120,7 +122,7 @@ if __name__ == "__main__":
         for i in range(index[0], index[1]):
             x = state_array[i, :]
             try:
-                sol = ocp.solve(x)
+                sol = ocp_double_pendulum.solve(x)
                 viable.append([x[0], x[1]])
                 print("Feasible initial state found:", x)
             except RuntimeError as e:                     # We catch the runtime exception relative to absence of solution
@@ -148,7 +150,7 @@ if __name__ == "__main__":
         start = time.time()
 
         # Multiprocess start
-        results = pool.map(ocp_function, args)
+        results = pool.map(ocp_function_double_pendulum, args)
 
         # Multiprocess end
         pool.close()
@@ -183,7 +185,7 @@ if __name__ == "__main__":
         # Iterate through every state in the states grid
         for state in state_array:
             try:
-                sol = ocp.solve(state)
+                sol = ocp_double_pendulum.solve(state)
                 viable_states.append([state[0], state[1]])
                 print("Feasible initial state found:", state)
             except RuntimeError as e:      # We catch the runtime exception relative to absence of solution

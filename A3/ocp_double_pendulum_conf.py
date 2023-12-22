@@ -16,4 +16,4 @@ lowerControlBound = np.array([-9.81, -9.81])
 upperControlBound = np.array([9.81, 9.81])
 w_q = np.array([10, 10])
 w_v = np.array([10, 10])
-w_u = 1e-2
+w_u = np.array([1e-2, 1e-2])
