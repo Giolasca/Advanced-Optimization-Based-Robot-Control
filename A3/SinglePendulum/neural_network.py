@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 import matplotlib.pyplot as plt
+from tensorflow.keras.utils import plot_model
+import visualkeras
 
 # Load data from a .mat file
 data = loadmat('data.mat')  # Replace 'data.mat' with your file path or name
@@ -47,6 +49,8 @@ model.fit(X_train, y_train, epochs=20, batch_size=100, validation_split=0.2)
 
 # Print model summary
 model.summary()
+plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
+visualkeras.layered_view(model, to_file='model_layers.png').show()
 
 # Evaluate the model on the test set
 loss, accuracy = model.evaluate(X_test, y_test)

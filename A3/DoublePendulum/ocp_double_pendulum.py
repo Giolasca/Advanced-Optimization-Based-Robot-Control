@@ -118,12 +118,12 @@ if __name__ == "__main__":
     num_processes = conf.num_processes
 
     # Creation of initial states grid
-    n_pos1 = 5
-    n_vel1 = 5
+    n_pos1 = 10
+    n_vel1 = 10
     n_ics1 = n_pos1 * n_vel1
 
-    n_pos2 = 5
-    n_vel2 = 5
+    n_pos2 = 10
+    n_vel2 = 10
     n_ics2 = n_pos2 * n_vel2
 
     possible_q1 = np.linspace(conf.lowerPositionLimit1, conf.upperPositionLimit1, num=n_pos1)
@@ -257,10 +257,10 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot()
     if len(viable_states) != 0:
-        ax.scatter(viable_states[:,0], viable_states[:,1], c='r', label='viable')
+        ax.scatter(viable_states[:,2], viable_states[:,3], c='r', label='viable')
         ax.legend()
     if len(no_viable_states) != 0:
-        ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b', label='non-viable')
+        ax.scatter(no_viable_states[:,2], no_viable_states[:,3], c='b', label='non-viable')
         ax.legend()
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
