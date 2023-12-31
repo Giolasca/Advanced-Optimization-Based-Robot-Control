@@ -7,13 +7,26 @@ T = 1                   # OCP horizion
 dt = 0.01               # OCP time step
 max_iter = 100          # Maximum iteration per point
 
-lowerPositionLimit = np.array([3/4*np.pi, 3/4*np.pi])
-upperPositionLimit = np.array([5/4*np.pi, 5/4*np.pi])
-lowerVelocityLimit = np.array([-10, -10])
-upperVelocityLimit = np.array([10, 10])
+lowerPositionLimit1 = 3/4*np.pi
+upperPositionLimit1 = 5/4*np.pi
+lowerVelocityLimit1 = -10
+upperVelocityLimit1 = 10
 
-lowerControlBound = np.array([-9.81, -9.81])
-upperControlBound = np.array([9.81, 9.81])
-w_q = np.array([10, 10])
-w_v = np.array([10, 10])
-w_u = np.array([1e-2, 1e-2])
+lowerControlBound1 = -9.81
+upperControlBound1 = 9.81
+
+lowerPositionLimit2 = 3/4*np.pi
+upperPositionLimit2 = 5/4*np.pi
+lowerVelocityLimit2 = -10
+upperVelocityLimit2 = 10
+
+lowerControlBound2 = -9.81
+upperControlBound2 = 9.81
+
+w_q1 = 10
+w_v1 = 10
+w_u1 = 1e-2
+
+w_q2 = 10
+w_v2 = 10
+w_u2= 1e-2

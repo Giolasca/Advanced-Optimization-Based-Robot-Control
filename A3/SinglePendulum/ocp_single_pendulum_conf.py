@@ -15,5 +15,5 @@ lowerControlBound = -9.81
 upperControlBound = 9.81
 
 w_q = 10
-w_v = 10
+w_v = 1e-2
 w_u = 1e-2

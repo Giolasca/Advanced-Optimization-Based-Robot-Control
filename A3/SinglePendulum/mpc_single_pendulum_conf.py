@@ -11,6 +11,6 @@ upperVelocityLimit = 10
 lowerControlBound = -9.81
 upperControlBound = 9.81
 
-w_q = 10
+w_q = 5
 w_v = 1e-2
 w_u = 1e-2

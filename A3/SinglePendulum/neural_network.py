@@ -33,7 +33,7 @@ def create_model(input_shape):
         layers.Dense(16, activation="relu"),
         layers.Dense(32, activation='relu'),
         layers.Dense(64, activation='relu'),
-        layers.Dense(1, activation='relu')  # Sigmoid for binary classification
+        layers.Dense(1, activation='relu') 
     ])
     return model
 

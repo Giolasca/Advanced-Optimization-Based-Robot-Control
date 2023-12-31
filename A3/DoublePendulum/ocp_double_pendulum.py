@@ -9,36 +9,51 @@ class OcpDoublePendulum:
     def __init__(self):
         self.T = conf.T                  # OCP horizon
         self.dt = conf.dt                # time step
-        self.w_q = conf.w_q              # Position weight
-        self.w_u = conf.w_u              # Input weight
-        self.w_v = conf.w_v              # Velocity weight
+        self.w_q1 = conf.w_q1             # Position weight
+        self.w_u1 = conf.w_u1              # Input weight
+        self.w_v1 = conf.w_v1              # Velocity weight
+
+        self.w_q2 = conf.w_q2             # Position weight
+        self.w_u2 = conf.w_u2              # Input weight
+        self.w_v2 = conf.w_v2              # Velocity weight
     
-    def solve(self, x_init, X_guess = None, U_guess = None):
+    def solve(self, x_init1, x_init2, X_guess1 = None, X_guess2 = None, U_guess1 = None, U_guess2 = None):
         self.N = int(self.T/self.dt)                # I initalize the Opti helper from casadi
         self.opti = casadi.Opti()                   # N is the size of the vector we want to realize, the number of steps we want to compute. We create a vector containing all the states of size N+1, 
                                                     # We create a vector of control inputs of size N, one less than the list of states since final control input doesn't have any importance
         # Casadi variables declaration
-        self.q = self.opti.variable(self.N+1)       
-        self.v = self.opti.variable(self.N+1)
-        self.u = self.opti.variable(self.N)
-        q = self.q
-        v = self.v
-        u = self.u
+        self.q1 = self.opti.variable(self.N+1)
+        self.q2 = self.opti.variable(self.N+1)       
+        self.v1 = self.opti.variable(self.N+1)
+        self.v2 = self.opti.variable(self.N+1)
+        self.u1 = self.opti.variable(self.N)
+        self.u2 = self.opti.variable(self.N)
+        q1 = self.q1
+        q2 = self.q2
+        v1 = self.v1
+        v2 = self.v2
+        u1 = self.u1
+        u2 = self.u2
         
         # State vector initialization
-        if (X_guess is not None):
+        if ((X_guess1 is not None) and (X_guess2 is not None)):
             for i in range(self.N+1):
-                self.opti.set_initial(q[i], X_guess[0,i])
-                self.opti.set_initial(v[i], X_guess[1,i])
+                self.opti.set_initial(q1[i], X_guess1[0,i])
+                self.opti.set_initial(v1[i], X_guess1[1,i])
+                self.opti.set_initial(q2[i], X_guess2[0,i])
+                self.opti.set_initial(v2[i], X_guess2[1,i])
         else:
             for i in range(self.N+1):
-                self.opti.set_initial(q[i], x_init[0])
-                self.opti.set_initial(v[i], x_init[1])
+                self.opti.set_initial(q1[i], x_init1[0])
+                self.opti.set_initial(v1[i], x_init1[1])
+                self.opti.set_initial(q2[i], x_init2[0])
+                self.opti.set_initial(v2[i], x_init2[1])
         
         # Control input vector initalization
-        if (U_guess is not None):
+        if ((U_guess1 is not None) and (U_guess2 is not None)):
             for i in range(self.N):
-                self.opti.set_initial(u[i], U_guess[i])
+                self.opti.set_initial(u1[i], U_guess1[i])
+                self.opti.set_initial(u2[i], U_guess2[i])
 
         # Choosing solver
         opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
@@ -47,40 +62,50 @@ class OcpDoublePendulum:
 
         # Cost definition
         self.cost = 0
-        #self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
+        self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
         for i in range(self.N+1):
-            self.cost += self.w_v * v[i]**2
+            self.cost += self.w_v1 * v1[i]**2 + self.w_v2 * v2[i]**2
             if (i<self.N):                           # Check necessary since at the last step it doesn't make sense to consider the input
-                self.cost += self.w_u * u[i]**2
-            #self.cost += self.running_costs[i]
+                self.cost += self.w_u1 * u1[i]**2 + self.w_u2 * u2[i]**2
+            self.cost += self.running_costs[i]
         self.opti.minimize(self.cost)
 
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = doublependulum_dynamics.f(np.array([q[i], q[i+self.N], v[i], v[i+self.N]]), u[i])
+            x_next = doublependulum_dynamics.f(np.array([q1[i], q2[i], v1[i], v1[i]]), u1[i], u2[i])
             # Dynamics imposition
-            self.opti.subject_to(q[i+1] == x_next[0])
-            self.opti.subject_to(v[i+1] == x_next[2])
+            self.opti.subject_to(q1[i+1] == x_next[0])
+            self.opti.subject_to(q2[i+1] == x_next[1])
+            self.opti.subject_to(v1[i+1] == x_next[2])
+            self.opti.subject_to(v2[i+1] == x_next[3])
         
         # Initial state constraint
-        self.opti.subject_to(q[0] == x_init[0])
-        self.opti.subject_to(v[0] == x_init[1])
+        self.opti.subject_to(q1[0] == x_init1[0])
+        self.opti.subject_to(v1[0] == x_init1[1])
+        self.opti.subject_to(q2[0] == x_init2[0])
+        self.opti.subject_to(v2[0] == x_init2[1])
 
         # Bounds constraints
         for i in range(self.N+1):
             # Position bounds
-            self.opti.subject_to(q[i] <= conf.upperPositionLimit[0])
-            self.opti.subject_to(q[i] >= conf.lowerPositionLimit[0])
+            self.opti.subject_to(q1[i] <= conf.upperPositionLimit1)
+            self.opti.subject_to(q1[i] >= conf.lowerPositionLimit1)
+            self.opti.subject_to(q2[i] <= conf.upperPositionLimit2)
+            self.opti.subject_to(q2[i] >= conf.lowerPositionLimit2)
 
             # Velocity bounds
-            self.opti.subject_to(v[i] <= conf.upperVelocityLimit[0])
-            self.opti.subject_to(v[i] >= conf.lowerVelocityLimit[0])
+            self.opti.subject_to(v1[i] <= conf.upperVelocityLimit1)
+            self.opti.subject_to(v1[i] >= conf.lowerVelocityLimit1)
+            self.opti.subject_to(v2[i] <= conf.upperVelocityLimit2)
+            self.opti.subject_to(v2[i] >= conf.lowerVelocityLimit2)
             
             if (i<self.N):
                 # Control bounds
-                self.opti.subject_to(u[i] <= conf.upperControlBound[0])
-                self.opti.subject_to(u[i] >= conf.lowerControlBound[0])
+                self.opti.subject_to(u1[i] <= conf.upperControlBound1)
+                self.opti.subject_to(u1[i] >= conf.lowerControlBound1)
+                self.opti.subject_to(u2[i] <= conf.upperControlBound2)
+                self.opti.subject_to(u2[i] >= conf.lowerControlBound2)
 
         return self.opti.solve()
 
@@ -93,23 +118,30 @@ if __name__ == "__main__":
     num_processes = conf.num_processes
 
     # Creation of initial states grid
-    n_pos = 101
-    n_vel = 101
-    n_ics = n_pos * n_vel
-    possible_q1 = np.linspace(conf.lowerPositionLimit[0], conf.upperPositionLimit[0], num=n_pos)
-    possible_v1 = np.linspace(conf.lowerVelocityLimit[0], conf.upperVelocityLimit[0], num=n_vel)
-    possible_q2 = np.linspace(conf.lowerPositionLimit[1], conf.upperPositionLimit[1], num=n_pos)
-    possible_v2 = np.linspace(conf.lowerVelocityLimit[1], conf.upperVelocityLimit[1], num=n_vel)
-    state_array = np.zeros((n_ics, 4))
+    n_pos1 = 101
+    n_vel1 = 101
+    n_ics1 = n_pos1 * n_vel1
+
+    n_pos2 = 101
+    n_vel2 = 101
+    n_ics2 = n_pos2 * n_vel2
+
+    possible_q1 = np.linspace(conf.lowerPositionLimit1, conf.upperPositionLimit1, num=n_pos1)
+    possible_v1 = np.linspace(conf.lowerVelocityLimit1, conf.upperVelocityLimit1, num=n_vel1)
+    possible_q2 = np.linspace(conf.lowerPositionLimit2, conf.upperPositionLimit2, num=n_pos2)
+    possible_v2 = np.linspace(conf.lowerVelocityLimit2, conf.upperVelocityLimit2, num=n_vel2)
+    state_array1 = np.zeros((n_ics1, 2))
+    state_array2 = np.zeros((n_ics2, 2))
+ 
+    state_array = np.hstack((state_array1,state_array2))
 
     j = k = 0
-    for i in range (n_ics):
+    for i in range (n_ics1):
         state_array[i,:] = np.array([possible_q1[j], possible_q2[j], possible_v1[k], possible_v2[k]])
         k += 1
-        if (k == n_vel):
+        if (k == n_vel1):
             k = 0
             j += 1
-
     # Instance of OCP solver
     ocp_double_pendulum = OcpDoublePendulum()
 
@@ -120,10 +152,10 @@ if __name__ == "__main__":
         no_viable = []
         # We divide the states grid in complementary subsets
         for i in range(index[0], index[1]):
-            x = state_array[i, :]
+            x = state_array1[i, :]
             try:
                 sol = ocp_double_pendulum.solve(x)
-                viable.append([x[0], x[1]])
+                viable.append([x[0], x[1], x[2], x[3]])
                 print("Feasible initial state found:", x)
             except RuntimeError as e:                     # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
@@ -133,10 +165,9 @@ if __name__ == "__main__":
                     print("Runtime error:", e)
         return viable, no_viable
 
-
     if (multiproc == 1):
         # I subdivide the states grid in equal spaces proportional to the number of processes
-        indexes = np.linspace(0, n_ics, num=num_processes+1)
+        indexes = np.linspace(0, n_ics1, num=num_processes+1)
 
         # I define the arguments to pass to the functions: the indexes necessary to split the states grid
         args = []
@@ -186,12 +217,12 @@ if __name__ == "__main__":
         for state in state_array:
             try:
                 sol = ocp_double_pendulum.solve(state)
-                viable_states.append([state[0], state[1]])
+                viable_states.append([state[0], state[1], state[2], state[3]])
                 print("Feasible initial state found:", state)
             except RuntimeError as e:      # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
                     print("Non feasible initial state found:", state)
-                    no_viable_states.append([state[0], state[1]])
+                    no_viable_states.append([state[0], state[1], state[2], state[3]])
                 else:
                     print("Runtime error:", e)
 

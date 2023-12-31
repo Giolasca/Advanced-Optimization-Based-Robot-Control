@@ -68,7 +68,7 @@ class MpcSinglePendulum:
         self.opti.solver("ipopt", opts, s_opst)
 
         # Target position
-        q_target = casadi.pi*3/4
+        q_target = casadi.pi*5/4
 
         # Cost definition
         self.cost = 0
@@ -107,18 +107,18 @@ class MpcSinglePendulum:
         
         # Terminal constraint (NN)
         state = [q[self.N], v[self.N]]
-        self.opti.subject_to(self.nn_to_casadi(self.weights, state) > 0)
+        self.opti.subject_to(self.nn_to_casadi(self.weights, state) >= 0)
 
         return self.opti.solve()
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-
+ 
     # Instance of OCP solver
     mpc = MpcSinglePendulum()
     
-    initial_state = np.array([np.pi, 0])
+    initial_state = np.array([np.pi,0])
     actual_trajectory = []
     actual_inputs = []
 
