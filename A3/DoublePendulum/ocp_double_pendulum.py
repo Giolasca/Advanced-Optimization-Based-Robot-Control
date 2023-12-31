@@ -64,16 +64,16 @@ class OcpDoublePendulum:
         self.cost = 0
         self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
         for i in range(self.N+1):
-            self.cost += self.w_v1 * v1[i]**2 + self.w_v2 * v2[i]**2
+            self.running_costs[i] = self.w_v1 * v1[i]**2 + self.w_v2 * v2[i]**2
             if (i<self.N):                           # Check necessary since at the last step it doesn't make sense to consider the input
-                self.cost += self.w_u1 * u1[i]**2 + self.w_u2 * u2[i]**2
+                self.running_costs[i] += self.w_u1 * u1[i]**2 + self.w_u2 * u2[i]**2
             self.cost += self.running_costs[i]
         self.opti.minimize(self.cost)
 
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = doublependulum_dynamics.f(np.array([q1[i], q2[i], v1[i], v1[i]]), u1[i], u2[i])
+            x_next = doublependulum_dynamics.f(np.array([q1[i], q2[i], v1[i], v2[i]]), np.array([u1[i], u2[i]]))
             # Dynamics imposition
             self.opti.subject_to(q1[i+1] == x_next[0])
             self.opti.subject_to(q2[i+1] == x_next[1])
@@ -118,12 +118,12 @@ if __name__ == "__main__":
     num_processes = conf.num_processes
 
     # Creation of initial states grid
-    n_pos1 = 101
-    n_vel1 = 101
+    n_pos1 = 5
+    n_vel1 = 5
     n_ics1 = n_pos1 * n_vel1
 
-    n_pos2 = 101
-    n_vel2 = 101
+    n_pos2 = 5
+    n_vel2 = 5
     n_ics2 = n_pos2 * n_vel2
 
     possible_q1 = np.linspace(conf.lowerPositionLimit1, conf.upperPositionLimit1, num=n_pos1)
@@ -133,11 +133,12 @@ if __name__ == "__main__":
     state_array1 = np.zeros((n_ics1, 2))
     state_array2 = np.zeros((n_ics2, 2))
  
-    state_array = np.hstack((state_array1,state_array2))
+    #state_array = np.hstack((state_array1,state_array2))
 
     j = k = 0
     for i in range (n_ics1):
-        state_array[i,:] = np.array([possible_q1[j], possible_q2[j], possible_v1[k], possible_v2[k]])
+        state_array1[i,:] = np.array([possible_q1[j], possible_v1[k]])
+        state_array2[i,:] = np.array([possible_q2[j], possible_v2[k]])
         k += 1
         if (k == n_vel1):
             k = 0
@@ -152,15 +153,16 @@ if __name__ == "__main__":
         no_viable = []
         # We divide the states grid in complementary subsets
         for i in range(index[0], index[1]):
-            x = state_array1[i, :]
+            x1 = state_array1[i, :]
+            x2 = state_array2[i, :]
             try:
-                sol = ocp_double_pendulum.solve(x)
-                viable.append([x[0], x[1], x[2], x[3]])
-                print("Feasible initial state found:", x)
+                sol = ocp_double_pendulum.solve(x1,x2)
+                viable.append([x1[0], x1[1], x2[0], x2[1]])
+                print("Feasible initial state found:", x1,x2)
             except RuntimeError as e:                     # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
-                    print("Non feasible initial state found:", x)
-                    no_viable.append([x[0], x[1]])
+                    print("Non feasible initial state found:", x1,x2)
+                    no_viable.append([x1[0], x1[1], x2[0], x2[1]])
                 else:
                     print("Runtime error:", e)
         return viable, no_viable
@@ -214,15 +216,27 @@ if __name__ == "__main__":
         # Keep track of execution time
         start = time.time()
         # Iterate through every state in the states grid
-        for state in state_array:
+        for state1 in state_array1:
             try:
-                sol = ocp_double_pendulum.solve(state)
-                viable_states.append([state[0], state[1], state[2], state[3]])
-                print("Feasible initial state found:", state)
+                sol = ocp_double_pendulum.solve(state1)
+                viable_states.append([state1[0], state1[1]])
+                print("Feasible initial state found:", state1)
             except RuntimeError as e:      # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
-                    print("Non feasible initial state found:", state)
-                    no_viable_states.append([state[0], state[1], state[2], state[3]])
+                    print("Non feasible initial state found:", state1)
+                    no_viable_states.append([state1[0], state1[1]])
+                else:
+                    print("Runtime error:", e)
+        
+        for state2 in state_array2:
+            try:
+                sol = ocp_double_pendulum.solve(state2)
+                viable_states.append([state2[0], state2[1]])
+                print("Feasible initial state found:", state2)
+            except RuntimeError as e:      # We catch the runtime exception relative to absence of solution
+                if "Infeasible_Problem_Detected" in str(e):
+                    print("Non feasible initial state found:", state2)
+                    no_viable_states.append([state2[0], state2[1]])
                 else:
                     print("Runtime error:", e)
 

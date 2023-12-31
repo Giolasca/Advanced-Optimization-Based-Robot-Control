@@ -1,4 +1,4 @@
-from math import sin, cos
+from casadi import sin, cos
 import numpy as np
 
 def f(x, u):
