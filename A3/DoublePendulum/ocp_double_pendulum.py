@@ -3,6 +3,7 @@ import casadi
 import doublependulum_dynamics as doublependulum_dynamics
 import multiprocessing
 import ocp_double_pendulum_conf as conf
+import scipy.io
 
 class OcpDoublePendulum:
 
@@ -118,12 +119,12 @@ if __name__ == "__main__":
     num_processes = conf.num_processes
 
     # Creation of initial states grid
-    n_pos1 = 10
-    n_vel1 = 10
+    n_pos1 = 20
+    n_vel1 = 20
     n_ics1 = n_pos1 * n_vel1
 
-    n_pos2 = 10
-    n_vel2 = 10
+    n_pos2 = 20
+    n_vel2 = 20
     n_ics2 = n_pos2 * n_vel2
 
     possible_q1 = np.linspace(conf.lowerPositionLimit1, conf.upperPositionLimit1, num=n_pos1)
@@ -195,6 +196,11 @@ if __name__ == "__main__":
         for i in range(num_processes-1):
             viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
             no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
+
+        # Save the results .mat
+        mat_file_path_viable = 'data.mat'
+        data_dict_viable = {'viable_states': viable_states, 'non_viable_states': no_viable_states}
+        scipy.io.savemat(mat_file_path_viable, data_dict_viable)
 
         # Stop keeping track of time
         end = time.time()
