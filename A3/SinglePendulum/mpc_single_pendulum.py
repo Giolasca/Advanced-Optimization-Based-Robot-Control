@@ -68,14 +68,14 @@ class MpcSinglePendulum:
         self.opti.solver("ipopt", opts, s_opst)
 
         # Target position
-        q_target = casadi.pi*5/4
+        q_target = casadi.pi*7/8
 
         # Cost definition
         self.cost = 0
         self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
         for i in range(self.N+1):
             self.running_costs[i] = self.w_v * v[i]**2
-            self.running_costs[i] = self.w_q * (q[i] - q_target)**2
+            self.running_costs[i] += self.w_q * (q[i] - q_target)**2
             if (i<self.N):                           # Check necessary since at the last step it doesn't make sense to consider the input
                 self.running_costs[i] += self.w_u * u[i]**2
             self.cost += self.running_costs[i]
@@ -107,26 +107,28 @@ class MpcSinglePendulum:
         
         # Terminal constraint (NN)
         state = [q[self.N], v[self.N]]
-        self.opti.subject_to(self.nn_to_casadi(self.weights, state) >= 0)
+        if conf.terminal_constraint_on:
+            self.opti.subject_to(self.nn_to_casadi(self.weights, state) > 0.5)
+        
+        self.opti.callback(lambda i: print(i))
 
         return self.opti.solve()
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
- 
+
     # Instance of OCP solver
     mpc = MpcSinglePendulum()
     
-    initial_state = np.array([np.pi,0])
+    initial_state = conf.initial_state
     actual_trajectory = []
     actual_inputs = []
 
-    n_step = 100
+    mpc_step = conf.mpc_step
     new_state_guess = np.zeros((2, mpc.N+1))
     new_input_guess = np.zeros((mpc.N))
 
-    first_run = 0
     sol = mpc.solve(initial_state)
     actual_trajectory.append(np.array([sol.value(mpc.q[1]), sol.value(mpc.v[1])]))
     actual_inputs.append(sol.value(mpc.u[0]))
@@ -138,15 +140,33 @@ if __name__ == "__main__":
     for i in range(mpc.N-1):
         new_input_guess[i] = sol.value(mpc.u[i+1])
         
-    for i in range(n_step):
-        sol = mpc.solve(actual_trajectory[i], new_state_guess, new_input_guess)
+    for i in range(mpc_step):
+        noise = np.random.normal(conf.mean, conf.std, actual_trajectory[i].shape)
+        if conf.noise:
+            init_state = actual_trajectory[i] + noise
+        else:
+            init_state = actual_trajectory[i]
+        try:
+            sol = mpc.solve(init_state, new_state_guess, new_input_guess)
+        except RuntimeError as e:
+            if "Infeasible_Problem_Detected" in str(e):
+                print("")
+                print("======================================")
+                print("MPC stopped due to infeasible problem")
+                print("======================================")
+                print("")
+                print(mpc.opti.debug.show_infeasibilities())
+                break
+            else:
+                print(e)
         actual_trajectory.append(np.array([sol.value(mpc.q[1]), sol.value(mpc.v[1])]))
         actual_inputs.append(sol.value(mpc.u[0]))
-        for i in range(mpc.N):
-            new_state_guess[0, i] = sol.value(mpc.q[i+1])
-            new_state_guess[1, i] = sol.value(mpc.v[i+1])
-        for i in range(mpc.N-1):
-            new_input_guess[i] = sol.value(mpc.u[i+1])
+        for k in range(mpc.N):
+            new_state_guess[0, k] = sol.value(mpc.q[k+1])
+            new_state_guess[1, k] = sol.value(mpc.v[k+1])
+        for j in range(mpc.N-1):
+            new_input_guess[j] = sol.value(mpc.u[j+1])
+        print("Step", i+1, "out of", mpc_step, "done")
         
     positions = []
     velocities = []
@@ -155,14 +175,31 @@ if __name__ == "__main__":
         positions.append(actual_trajectory[i][0])
         velocities.append(actual_trajectory[i][1])
 
+    _, state_array = conf.grid_states(51,51)
+    label_pred = mpc.model.predict(state_array)
+
+    viable_states = []
+    no_viable_states = []
+
+    for i, label in enumerate(label_pred):
+        if label>0.5:
+            viable_states.append(state_array[i,:])
+        else:
+            no_viable_states.append(state_array[i,:])
+    
+    viable_states = np.array(viable_states)
+    no_viable_states = np.array(no_viable_states)
+
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot()
-    ax.scatter(positions, velocities, c='r')
-    ax.legend()
+    ax.scatter(positions, velocities, c='g')
+    ax.scatter(viable_states[:,0], viable_states[:,1], c='r')
+    ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b')
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
 
+    # Torque plot
     fig = plt.figure(figsize=(12,8))
     plt.plot(actual_inputs)
     plt.show()
