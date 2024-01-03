@@ -1,7 +1,7 @@
 import numpy as np
 import casadi
 import scipy.io
-import doublependulum_dynamics as doublependulum_dynamics
+import orc.A3.DoublePendulum.double_pendulum_dynamics as double_pendulum_dynamics
 import multiprocessing
 import ocp_double_pendulum_conf as conf
 import matplotlib.pyplot as plt
@@ -76,7 +76,7 @@ class OcpDoublePendulum:
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = doublependulum_dynamics.f(np.array([q1[i], v1[i], q2[i], v2[i]]), np.array([u1[i], u2[i]]))
+            x_next = double_pendulum_dynamics.f(np.array([q1[i], v1[i], q2[i], v2[i]]), np.array([u1[i], u2[i]]))
             # Dynamics imposition
             self.opti.subject_to(q1[i+1] == x_next[0])
             self.opti.subject_to(v1[i+1] == x_next[1])
@@ -117,22 +117,20 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import time
 
-    multiproc = conf.multiproc
     num_processes = conf.num_processes
-    plot = conf.plot
-    plot1 = conf.plot1
 
     # Creation of initial states grid
-    n_pos = 51
-    n_vel = 51
-    n_ics = n_pos * n_pos * n_vel * n_vel
-    possible_q1 = np.linspace(conf.lowerPositionLimit_q1, conf.upperPositionLimit_q1, num=n_pos)
-    possible_v1 = np.linspace(conf.lowerVelocityLimit_v1, conf.upperVelocityLimit_v1, num=n_vel)
-    possible_q2 = np.linspace(conf.lowerPositionLimit_q2, conf.upperPositionLimit_q2, num=n_pos)
-    possible_v2 = np.linspace(conf.lowerVelocityLimit_v2, conf.upperVelocityLimit_v2, num=n_vel)
+    n_pos_q1 = 5
+    n_vel_v1 = 6
+    n_pos_q2 = 20
+    n_vel_v2 = 20
+    n_ics = n_pos_q1 * n_pos_q2 * n_vel_v1 * n_vel_v2
+    possible_q1 = np.linspace(conf.lowerPositionLimit_q1, conf.upperPositionLimit_q1, num=n_pos_q1)
+    possible_v1 = np.linspace(conf.lowerVelocityLimit_v1, conf.upperVelocityLimit_v1, num=n_vel_v1)
+    possible_q2 = np.linspace(conf.lowerPositionLimit_q2, conf.upperPositionLimit_q2, num=n_pos_q2)
+    possible_v2 = np.linspace(conf.lowerVelocityLimit_v2, conf.upperVelocityLimit_v2, num=n_vel_v2)
     
-    state_array = np.zeros((n_pos * n_pos * n_vel * n_vel, 4))
-    #state_array = np.zeros((n_ics, 4))
+    state_array = np.zeros((n_ics, 4))
 
     i = 0
     for q1 in possible_q1:
@@ -142,6 +140,26 @@ if __name__ == "__main__":
                     state_array[i, :] = np.array([q1, v1, q2, v2])
                     i += 1
 
+    if (conf.old == 1):
+        # Load existing points from a .mat file
+        existing_points_file = 'data.mat'
+        existing_points_data = scipy.io.loadmat(existing_points_file)
+
+        # Extract viable and non-viable states from the loaded data
+        viable_states_old = existing_points_data['viable_states']
+        non_viable_states_old = existing_points_data['non_viable_states']
+
+        # Convert arrays to lists of tuples
+        viable_tuples = [tuple(x) for x in viable_states_old]
+        non_viable_tuples = [tuple(x) for x in non_viable_states_old]
+
+        # Create separate sets for viable and non-viable states
+        viable_set = set(viable_tuples)
+        non_viable_set = set(non_viable_tuples)
+
+        # Combine the two sets to get all existing points
+        all_existing_points = viable_set.union(non_viable_set)
+    
     # Instance of OCP solver
     ocp = OcpDoublePendulum()
 
@@ -156,6 +174,11 @@ if __name__ == "__main__":
         # We divide the states grid in complementary subsets
         for i in range(start_index, end_index):
             x = state_array[i, :]
+
+            if tuple(x) in all_existing_points:
+                print("Skipping existing point:", x)
+                continue
+                
             try:
                 sol = ocp.solve(x)
                 viable.append([x[0], x[1], x[2], x[3]])
@@ -168,18 +191,19 @@ if __name__ == "__main__":
                     print("Runtime error:", e)
         return viable, no_viable
 
-    if (multiproc == 1):
+    # Multi process execution
+    if (conf.multiproc == 1):
         # I subdivide the states grid in equal spaces proportional to the number of processes
-        indexes = np.linspace(0, n_ics, num=num_processes+1)
+        indexes = np.linspace(0, n_ics, num=conf.num_processes+1)
 
         # I define the arguments to pass to the functions: the indexes necessary to split the states grid
         args = []
         i = 0
-        for i in range(num_processes):
+        for i in range(conf.num_processes):
             args.append([int(indexes[i]), int(indexes[i+1])])
 
         # I initiate the pool
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=conf.num_processes)
 
         # Function to keep track of execution time
         start = time.time()
@@ -192,16 +216,18 @@ if __name__ == "__main__":
         pool.join()
         
         # I regroup the results into 2 lists of viable and non viable states
-        viable_states = np.array(results[0][0])
-        no_viable_states = np.array(results[0][1])
+        viable_states_new = np.array(results[0][0])
+        no_viable_states_new = np.array(results[0][1])
         for i in range(num_processes-1):
-            viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
-            no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
+            viable_states = np.concatenate((viable_states_new, np.array(results[i+1][0])))
+            no_viable_states = np.concatenate((no_viable_states_new, np.array(results[i+1][1])))
 
         # Save the results .mat
         mat_file_path_viable = 'data_double.mat'
+        viable_states = np.vstack((viable_states_old, viable_states_new))
+        non_viable_states = np.vstack((non_viable_states_old, no_viable_states_new))
         data_dict_viable = {'viable_states': viable_states, 'non_viable_states': no_viable_states}
-        scipy.io.savemat(mat_file_path_viable, data_dict_viable)
+        scipy.io.savemat(mat_file_path_viable, data_dict_viable, appendmat=True)
 
         # Stop keeping track of time
         end = time.time()
@@ -214,11 +240,12 @@ if __name__ == "__main__":
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
 
-    else:               # Single process execution
+    # Single process execution
+    else:               
 
         # I create empty lists to store viable and non viable states
-        viable_states = []
-        no_viable_states = []
+        viable_states_new = []
+        no_viable_states_new = []
 
         # Keep track of execution time
         start = time.time()
@@ -227,20 +254,20 @@ if __name__ == "__main__":
         for state in state_array:
             try:
                 sol = ocp.solve(state)
-                viable_states.append([state[0], state[1], state[2], state[3]])
+                viable_states_new.append([state[0], state[1], state[2], state[3]])
                 print("Feasible initial state found:", state)
             except RuntimeError as e:      # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
                     print("Non feasible initial state found:", state)
-                    no_viable_states.append([state[0], state[1], state[2], state[3]])
+                    no_viable_states_new.append([state[0], state[1], state[2], state[3]])
                 else:
                     print("Runtime error:", e)
 
         # Stop keeping track of time
         end = time.time()
 
-        viable_states = np.array(viable_states)
-        no_viable_states = np.array(no_viable_states)
+        viable_states_new = np.array(viable_states_new)
+        no_viable_states_new = np.array(no_viable_states_new)
 
         # Execution time in a nice format
         tot_time = end-start
@@ -249,7 +276,14 @@ if __name__ == "__main__":
         hours = (tot_time - seconds - minutes*60) / 3600
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
-    if(plot1 == 1):
+    # Interactive Plots
+    if(confplot == 1):
+        # Concatenate the new data with the existing data from the file
+        all_viable_states = np.vstack((viable_states_old, viable_states))
+        all_non_viable_states = np.vstack((non_viable_states_old, no_viable_states))
+
+        # Merge data from viable_states and non_viable_states
+        all_states = np.vstack((all_viable_states, all_non_viable_states))
 
         # Concatenate viable_states and no_viable_states
         all_states = np.vstack((viable_states, no_viable_states))
