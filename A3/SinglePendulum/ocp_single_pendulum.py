@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.io
 import casadi
 import single_pendulum_dynamics as single_pendulum_dynamics
 import multiprocessing
@@ -13,7 +12,6 @@ class OcpSinglePendulum:
         self.w_q = conf.w_q              # Position weight
         self.w_u = conf.w_u              # Input weight
         self.w_v = conf.w_v              # Velocity weight
-        
     
     def solve(self, x_init, X_guess = None, U_guess = None):
         self.N = int(self.T/self.dt)                # I initalize the Opti helper from casadi
@@ -51,7 +49,7 @@ class OcpSinglePendulum:
         self.cost = 0
         self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
         for i in range(self.N+1):
-            self.running_costs[i] = self.w_v * v[i]*2
+            self.running_costs[i] = self.w_v * v[i]**2
             if (i<self.N):                           # Check necessary since at the last step it doesn't make sense to consider the input
                 self.running_costs[i] += self.w_u * u[i]**2
             self.cost += self.running_costs[i]
@@ -72,43 +70,29 @@ class OcpSinglePendulum:
         # Bounds constraints
         for i in range(self.N+1):
             # Position bounds
-            self.opti.subject_to(q[i] <= conf.upperPositionLimit)
-            self.opti.subject_to(q[i] >= conf.lowerPositionLimit)
+            self.opti.subject_to(self.opti.bounded(conf.lowerPositionLimit, q[i], conf.upperPositionLimit))
 
             # Velocity bounds
-            self.opti.subject_to(v[i] <= conf.upperVelocityLimit)
-            self.opti.subject_to(v[i] >= conf.lowerVelocityLimit)
+            self.opti.subject_to(self.opti.bounded(conf.lowerVelocityLimit, v[i], conf.upperVelocityLimit))
             
             if (i<self.N):
                 # Control bounds
-                self.opti.subject_to(u[i] <= conf.upperControlBound)
-                self.opti.subject_to(u[i] >= conf.lowerControlBound)
-
+                self.opti.subject_to(self.opti.bounded(conf.lowerControlBound, u[i], conf.upperControlBound))
+        
         return self.opti.solve()
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    import pandas as pd
     import time
 
     multiproc = conf.multiproc
     num_processes = conf.num_processes
 
     # Creation of initial states grid
-    n_pos = 101
-    n_vel = 101
-    n_ics = n_pos * n_vel
-    possible_q = np.linspace(conf.lowerPositionLimit, conf.upperPositionLimit, num=n_pos)
-    possible_v = np.linspace(conf.lowerVelocityLimit, conf.upperVelocityLimit, num=n_vel)
-    state_array = np.zeros((n_ics, 2))
-
-    j = k = 0
-    for i in range (n_ics):
-        state_array[i,:] = np.array([possible_q[j], possible_v[k]])
-        k += 1
-        if (k == n_vel):
-            k = 0
-            j += 1
+    n_ics, state_array = conf.grid_states(conf.npos, conf.nvel)
+    # n_ics, state_array = conf.random_states(conf.nrandom)
 
     # Instance of OCP solver
     ocp = OcpSinglePendulum()
@@ -135,6 +119,7 @@ if __name__ == "__main__":
 
 
     if (multiproc == 1):
+        print("Multiprocessing execution started, number of processes:", num_processes)
         # I subdivide the states grid in equal spaces proportional to the number of processes
         indexes = np.linspace(0, n_ics, num=num_processes+1)
 
@@ -163,11 +148,6 @@ if __name__ == "__main__":
             viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
             no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
 
-        # Save the results .mat
-        mat_file_path_viable = 'data.mat'
-        data_dict_viable = {'viable_states': viable_states, 'non_viable_states': no_viable_states}
-        scipy.io.savemat(mat_file_path_viable, data_dict_viable)
-        
         # Stop keeping track of time
         end = time.time()
 
@@ -180,6 +160,7 @@ if __name__ == "__main__":
 
 
     else:               # Single process execution
+        print("Single process execution started")
 
         # I create empty lists to store viable and non viable states
         viable_states = []
@@ -225,3 +206,15 @@ if __name__ == "__main__":
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
+
+    # Unify both viable and non viable states with a flag to show wether they're viable or not
+    viable_states = np.column_stack((viable_states, np.ones(len(viable_states), dtype=int)))
+    no_viable_states = np.column_stack((no_viable_states, np.zeros(len(no_viable_states), dtype=int)))
+    dataset = np.concatenate((viable_states, no_viable_states))
+
+    # Create a DataFrame starting from the final array
+    columns = ['q', 'v', 'viable']
+    df = pd.DataFrame(dataset, columns=columns)
+
+    # Export DataFrame to csv format
+    df.to_csv('data.csv', index=False)

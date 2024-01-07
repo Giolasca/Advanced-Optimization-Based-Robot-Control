@@ -3,6 +3,7 @@ import casadi
 import single_pendulum_dynamics as single_pendulum_dynamics
 import mpc_single_pendulum_conf as conf
 from neural_network import create_model
+from sklearn.preprocessing import StandardScaler
 
 class MpcSinglePendulum:
 
@@ -14,9 +15,9 @@ class MpcSinglePendulum:
         self.w_v = conf.w_v                 # Velocity weight
         self.N = int(self.T/self.dt)        # I initalize the Opti helper from casadi
         self.model = create_model(2)        # Template of NN
-        self.model.load_weights("viable_nonviable_model.h5")
+        self.model.load_weights("single_pendulum_test.h5.h5")
         self.weights = self.model.get_weights()
-
+        self.mean, self.std = conf.init_scaler()
     
     def nn_to_casadi(self, params, x):
         out = np.array(x)
@@ -68,7 +69,7 @@ class MpcSinglePendulum:
         self.opti.solver("ipopt", opts, s_opst)
 
         # Target position
-        q_target = casadi.pi*7/8
+        q_target = conf.q_target
 
         # Cost definition
         self.cost = 0
@@ -106,11 +107,11 @@ class MpcSinglePendulum:
                 self.opti.subject_to(self.opti.bounded(conf.lowerControlBound, u[i], conf.upperControlBound))
         
         # Terminal constraint (NN)
-        state = [q[self.N], v[self.N]]
+        state = [(q[self.N] - self.mean[0])/self.std[0], (v[self.N] - self.mean[1])/self.std[1]]
         if conf.terminal_constraint_on:
-            self.opti.subject_to(self.nn_to_casadi(self.weights, state) > 0.5)
+            self.opti.subject_to(self.nn_to_casadi(self.weights, state) > 1)
         
-        self.opti.callback(lambda i: print(i))
+        # self.opti.callback(lambda i: print(i))
 
         return self.opti.solve()
 
@@ -175,14 +176,16 @@ if __name__ == "__main__":
         positions.append(actual_trajectory[i][0])
         velocities.append(actual_trajectory[i][1])
 
-    _, state_array = conf.grid_states(51,51)
-    label_pred = mpc.model.predict(state_array)
+    _, state_array = conf.grid_states(200,200)
+    to_test = conf.scaler.fit_transform(state_array)
+
+    label_pred = mpc.model.predict(to_test)
 
     viable_states = []
     no_viable_states = []
 
     for i, label in enumerate(label_pred):
-        if label>0.5:
+        if label>0:
             viable_states.append(state_array[i,:])
         else:
             no_viable_states.append(state_array[i,:])
@@ -192,9 +195,9 @@ if __name__ == "__main__":
 
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot()
-    ax.scatter(positions, velocities, c='g')
     ax.scatter(viable_states[:,0], viable_states[:,1], c='r')
     ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b')
+    ax.scatter(positions, velocities, c='g')
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
@@ -202,4 +205,21 @@ if __name__ == "__main__":
     # Torque plot
     fig = plt.figure(figsize=(12,8))
     plt.plot(actual_inputs)
+    plt.show()
+
+    positions = []
+    velocities = []
+
+    for element in actual_trajectory:
+        positions.append(element[0])
+        velocities.append(element[1])
+
+    # Position plot
+    fig = plt.figure(figsize=(12,8))
+    plt.plot(positions)
+    plt.show()
+
+    # Velocity plot
+    fig = plt.figure(figsize=(12,8))
+    plt.plot(velocities)
     plt.show()
