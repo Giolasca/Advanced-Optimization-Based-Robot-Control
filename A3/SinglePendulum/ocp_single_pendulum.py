@@ -1,6 +1,6 @@
 import numpy as np
 import casadi
-import single_pendulum_dynamics as single_pendulum_dynamics
+import single_pendulum_dynamics
 import multiprocessing
 import ocp_single_pendulum_conf as conf
 
@@ -217,4 +217,4 @@ if __name__ == "__main__":
     df = pd.DataFrame(dataset, columns=columns)
 
     # Export DataFrame to csv format
-    df.to_csv('data.csv', index=False)
+    df.to_csv('single_data.csv', index=False)

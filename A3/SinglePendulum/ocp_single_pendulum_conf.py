@@ -1,7 +1,7 @@
 import numpy as np
 
 multiproc = 1
-num_processes = 6
+num_processes = 4
 
 T = 0.5                   # OCP horizion
 dt = 0.01               # OCP time step
@@ -18,8 +18,8 @@ w_q = 1e2
 w_v = 1e-1
 w_u = 1e-4
 
-npos = 21
-nvel = 21
+npos = 121
+nvel = 121
 nrandom = 100
 
 # Function to create states array in a grid

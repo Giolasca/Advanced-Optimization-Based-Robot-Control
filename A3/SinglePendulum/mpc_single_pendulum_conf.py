@@ -7,14 +7,14 @@ T = 0.1                  # OCP horizion
 dt = 0.01               # OCP time step
 max_iter = 100          # Maximum iteration per point
 
-terminal_constraint_on = 1
-initial_state = np.array([np.pi, -1.5])
+terminal_constraint_on = 0
+initial_state = np.array([np.pi, -1])
 q_target = 5/4 * np.pi
 noise = 0
 mean = 0
 std = 0.1
 
-mpc_step = 200
+mpc_step = 1000
 
 lowerPositionLimit = 3/4*np.pi
 upperPositionLimit = 5/4*np.pi
@@ -29,7 +29,7 @@ w_u = 1e-4
 
 scaler = StandardScaler()
 
-dataframe = pd.read_csv("data.csv")
+dataframe = pd.read_csv("single_data.csv")
 labels = dataframe['viable']
 dataset = dataframe.drop('viable', axis=1)
 train_size = 0.8

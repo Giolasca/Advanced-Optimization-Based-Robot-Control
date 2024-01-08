@@ -1,9 +1,8 @@
 import numpy as np
 import casadi
-import single_pendulum_dynamics as single_pendulum_dynamics
 import mpc_single_pendulum_conf as conf
+import single_pendulum_dynamics
 from neural_network import create_model
-from sklearn.preprocessing import StandardScaler
 
 class MpcSinglePendulum:
 
@@ -15,7 +14,7 @@ class MpcSinglePendulum:
         self.w_v = conf.w_v                 # Velocity weight
         self.N = int(self.T/self.dt)        # I initalize the Opti helper from casadi
         self.model = create_model(2)        # Template of NN
-        self.model.load_weights("single_pendulum_test.h5.h5")
+        self.model.load_weights("single_pendulum_funziona.h5")
         self.weights = self.model.get_weights()
         self.mean, self.std = conf.init_scaler()
     
@@ -176,7 +175,7 @@ if __name__ == "__main__":
         positions.append(actual_trajectory[i][0])
         velocities.append(actual_trajectory[i][1])
 
-    _, state_array = conf.grid_states(200,200)
+    _, state_array = conf.grid_states(51,51)
     to_test = conf.scaler.fit_transform(state_array)
 
     label_pred = mpc.model.predict(to_test)
@@ -185,7 +184,7 @@ if __name__ == "__main__":
     no_viable_states = []
 
     for i, label in enumerate(label_pred):
-        if label>0:
+        if label>0.5:
             viable_states.append(state_array[i,:])
         else:
             no_viable_states.append(state_array[i,:])
@@ -195,9 +194,9 @@ if __name__ == "__main__":
 
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot()
+    ax.scatter(positions, velocities, c='g')
     ax.scatter(viable_states[:,0], viable_states[:,1], c='r')
     ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b')
-    ax.scatter(positions, velocities, c='g')
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()

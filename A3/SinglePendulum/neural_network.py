@@ -35,7 +35,7 @@ if __name__ == "__main__":
     print("Test accuracy:", results[1])
 
     # Save the model weights
-    model.save_weights("single_pendulum_test.h5")
+    model.save_weights("single_pendulum_funziona.h5")
 
     viable_states = []
     no_viable_states = []
@@ -71,4 +71,3 @@ if __name__ == "__main__":
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
-
