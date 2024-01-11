@@ -3,12 +3,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
-T = 0.1                  # OCP horizion
-dt = 0.01               # OCP time step
+T = 0.1                  # MPC horizion
+dt = 0.01               # MPC time step
 max_iter = 100          # Maximum iteration per point
 
 terminal_constraint_on = 1
+<<<<<<< HEAD
 initial_state = np.array([3/4*np.pi, 0])
+=======
+initial_state = np.array([np.pi, -1])
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
 q_target = 5/4 * np.pi
 noise = 0
 mean = 0
@@ -30,8 +34,12 @@ w_v = 1e-1
 w_u = 1e-4
 
 
+<<<<<<< HEAD
 ###  Dataset  ###
 dataframe = pd.read_csv("data_single_14641.csv")
+=======
+dataframe = pd.read_csv("single_data.csv")
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
 labels = dataframe['viable']
 dataset = dataframe.drop('viable', axis=1)
 train_size = 0.8

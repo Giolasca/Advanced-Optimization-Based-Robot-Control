@@ -1,6 +1,6 @@
 import numpy as np
 import casadi
-import double_pendulum_dynamics as double_pendulum_dynamics
+import doublependulum_dynamics as double_pendulum_dynamics
 import multiprocessing
 import ocp_double_pendulum_conf as conf
 import matplotlib.pyplot as plt
@@ -122,8 +122,8 @@ if __name__ == "__main__":
 
     # Generate an array of states either randomly or in a gridded pattern
     if (conf.grid == 1):
-        n_pos_q1 = 2
-        n_vel_v1 = 3   # 2 - 3 - 6 - 11 - 21 
+        n_pos_q1 = 6
+        n_vel_v1 = 6   # 2 - 3 - 6 - 11 - 21 
         n_pos_q2 = 21
         n_vel_v2 = 21
         n_ics = n_pos_q1 * n_vel_v1 * n_pos_q2 * n_vel_v2
@@ -137,11 +137,11 @@ if __name__ == "__main__":
     if (conf.old_data == 1):
     
         # Load data from CSV
-        data = pd.read_csv("data_double.csv")
+        data = pd.read_csv("double_data.csv")
 
         # Filter data based on the 'viable' column
-        viable_states_old = data[data['viable'] == 1][['q1', 'v1', 'q2', 'v2']].values
-        non_viable_states_old = data[data['viable'] == 0][['q1', 'v1', 'q2', 'v2']].values
+        viable_states_old = data[data['viable_states'] == 1][['q1', 'v1', 'q2', 'v2']].values
+        non_viable_states_old = data[data['viable_states'] == 0][['q1', 'v1', 'q2', 'v2']].values
 
         # Convert arrays to lists of tuples
         viable_tuples = [tuple(x) for x in viable_states_old]
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         print("Multiprocessing execution started, number of processes:", conf.num_processes, "number of points", new_state_array.shape)
         
         # Subdivide the states grid in equal spaces proportional to the number of processes
-        indexes = np.linspace(0, n_ics, num=conf.num_processes+1)
+        indexes = np.linspace(0, new_state_array.shape[0], num=conf.num_processes+1)
 
         # I define the arguments to pass to the functions: the indexes necessary to split the states grid
         args = []
@@ -258,11 +258,11 @@ if __name__ == "__main__":
             dataset_combined = np.concatenate((viable_states_combined, non_viable_states_combined))
 
             # Create a DataFrame starting from the final array
-            columns_combined = ['q1', 'v1', 'q2', 'v2', 'viable']
+            columns_combined = ['q1', 'v1', 'q2', 'v2', 'viable_states']
             df_combined = pd.DataFrame(dataset_combined, columns=columns_combined)
 
             # Export DataFrame to CSV format
-            df_combined.to_csv('data_double.csv', index=False)
+            df_combined.to_csv('double_data.csv', index=False)
 
             
     # Single process execution

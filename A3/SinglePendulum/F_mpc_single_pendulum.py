@@ -1,11 +1,17 @@
 import numpy as np
 import casadi
+<<<<<<< HEAD
 import F_single_pendulum_dynamics as F_single_pendulum_dynamics
 import F_mpc_single_pendulum_conf as conf
 from F_neural_network import create_model
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
+=======
+import mpc_single_pendulum_conf as conf
+import single_pendulum_dynamics
+from neural_network import create_model
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
 
 class MpcSinglePendulum:
 
@@ -17,7 +23,11 @@ class MpcSinglePendulum:
         self.w_v = conf.w_v                 # Velocity weight
         self.N = int(self.T/self.dt)        # I initalize the Opti helper from casadi
         self.model = create_model(2)        # Template of NN
+<<<<<<< HEAD
         self.model.load_weights("F_neural_network.h5")
+=======
+        self.model.load_weights("single_pendulum_funziona.h5")
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
         self.weights = self.model.get_weights()
         self.mean, self.std = conf.init_scaler()
     
@@ -91,8 +101,8 @@ class MpcSinglePendulum:
             # Dynamics imposition
             self.opti.subject_to(q[i+1] == x_next[0])
             self.opti.subject_to(v[i+1] == x_next[1])
-
-        # Initial state constraint       
+        
+        # Initial state constraint
         self.opti.subject_to(q[0] == x_init[0])
         self.opti.subject_to(v[0] == x_init[1])
 
@@ -107,7 +117,7 @@ class MpcSinglePendulum:
             if (i<self.N):
                 # Control bounds
                 self.opti.subject_to(self.opti.bounded(conf.lowerControlBound, u[i], conf.upperControlBound))
-
+        
         # Terminal constraint (NN)
         state = [(q[self.N] - self.mean[0])/self.std[0], (v[self.N] - self.mean[1])/self.std[1]]
         if conf.terminal_constraint_on:
@@ -119,6 +129,7 @@ class MpcSinglePendulum:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
 
     # Instance of OCP solver
     mpc = MpcSinglePendulum()
@@ -177,7 +188,7 @@ if __name__ == "__main__":
         positions.append(actual_trajectory[i][0])
         velocities.append(actual_trajectory[i][1])
 
-    _, state_array = conf.grid_states(121,121)
+    _, state_array = conf.grid_states(51,51)
     to_test = conf.scaler.fit_transform(state_array)
 
     label_pred = mpc.model.predict(to_test)
@@ -186,7 +197,7 @@ if __name__ == "__main__":
     no_viable_states = []
 
     for i, label in enumerate(label_pred):
-        if label>0:
+        if label > 0.5:
             viable_states.append(state_array[i,:])
         else:
             no_viable_states.append(state_array[i,:])
@@ -196,9 +207,13 @@ if __name__ == "__main__":
 
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot()
+    ax.scatter(positions, velocities, c='g')
     ax.scatter(viable_states[:,0], viable_states[:,1], c='r')
     ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b')
+<<<<<<< HEAD
     ax.scatter(positions, velocities, c=(0, 1, 1), s=30)
+=======
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
@@ -206,9 +221,6 @@ if __name__ == "__main__":
     # Torque plot
     fig = plt.figure(figsize=(12,8))
     plt.plot(actual_inputs)
-    plt.xlabel('mpc step')
-    plt.ylabel('u [N/m]')
-    plt.title('Torque')
     plt.show()
 
     positions = []
@@ -221,14 +233,18 @@ if __name__ == "__main__":
     # Position plot
     fig = plt.figure(figsize=(12,8))
     plt.plot(positions)
+<<<<<<< HEAD
     plt.xlabel('mpc step')
     plt.ylabel('q [rad]')
     plt.title('Position')
+=======
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
     plt.show()
 
     # Velocity plot
     fig = plt.figure(figsize=(12,8))
     plt.plot(velocities)
+<<<<<<< HEAD
     plt.xlabel('mpc step')
     plt.ylabel('v [rad/s]')
     plt.title('Velocity')
@@ -241,3 +257,6 @@ if __name__ == "__main__":
     # Export DataFrame to csv format
     #df.to_csv('../SinglePendulum/Plots_&_Animations/P8_Position.csv', index=False)
 
+=======
+    plt.show()
+>>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5

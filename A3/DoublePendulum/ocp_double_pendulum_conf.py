@@ -75,6 +75,3 @@ def random_states(n_q1v1):
             state_array[i * 441 + j, :] = np.array([q1, v1, q2, v2])
 
     return state_array
-
-
-
