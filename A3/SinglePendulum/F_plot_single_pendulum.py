@@ -1,10 +1,10 @@
 import numpy as np
-import MM_mpc_single_pendulum_conf as conf
+import F_mpc_single_pendulum_conf as conf
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
 
-positions = np.array(pd.read_csv("../SinglePendulum/Plots_&_Animations/P1_Position.csv").values.tolist()).flatten()
+positions = np.array(pd.read_csv("../SinglePendulum/Plots_&_Animations/P2_Position.csv").values.tolist()).flatten()
 
 fig, ax = plt.subplots(figsize=(12, 8))
 ax.set_aspect('equal')
@@ -49,7 +49,7 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, len(positions), interval=50, blit=True)
 
 # Save the animation as a GIF file using Pillow
-animation_file_path = "../SinglePendulum/Plots_&_Animations/P1_Pendulum.gif"
+animation_file_path = "../SinglePendulum/Plots_&_Animations/P2_Pendulum.gif"
 ani.save(animation_file_path, writer='pillow', fps=20)
 
 # Show the animation

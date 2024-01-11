@@ -2,7 +2,7 @@ import numpy as np
 import casadi
 import single_pendulum_dynamics as single_pendulum_dynamics
 import multiprocessing
-import MM_ocp_single_pendulum_conf as conf
+import F_ocp_single_pendulum_conf as conf
 import matplotlib.pyplot as plt
 import pandas as pd
 import time
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
 
     # Function definition to run in a process
-    def ocp_function(index):
+    def ocp_function_single_pendulum(index):
         # Empy lists to store viable and non viable states
         viable = []
         no_viable = []
@@ -113,10 +113,10 @@ if __name__ == "__main__":
             try:
                 sol = ocp.solve(x)
                 viable.append([x[0], x[1]])
-                print("Feasible initial state found:", x)
+                print("Feasible initial state found: [{:.3f}   {:.3f}]".format(*x))
             except RuntimeError as e:                     # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
-                    print("Non feasible initial state found:", x)
+                    print("Non feasible initial state found: [{:.3f}   {:.3f}]".format(*x))
                     no_viable.append([x[0], x[1]])
                 else:
                     print("Runtime error:", e)
@@ -142,18 +142,11 @@ if __name__ == "__main__":
         start = time.time()
 
         # Multiprocess start
-        results = pool.map(ocp_function, args)
+        results = pool.map(ocp_function_single_pendulum, args)
 
         # Multiprocess end
         pool.close()
         pool.join()
-        
-        # Regroup the results into 2 lists of viable and non viable states
-        viable_states = np.array(results[0][0])
-        no_viable_states = np.array(results[0][1])
-        for i in range(conf.num_processes-1):
-            viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
-            no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
 
         # Stop keeping track of time
         end = time.time()
@@ -165,11 +158,19 @@ if __name__ == "__main__":
         hours = int((tot_time - seconds - minutes*60) / 3600)
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
+        # Regroup the results into 2 lists of viable and non viable states
+        viable_states = np.array(results[0][0])
+        no_viable_states = np.array(results[0][1])
+        for i in range(conf.num_processes-1):
+            viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
+            no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
 
-    else:               # Single process execution
+
+    # Single process execution
+    else:               
         print("Single process execution started")
 
-        # I create empty lists to store viable and non viable states
+        # Empty lists to store viable and non viable states
         viable_states = []
         no_viable_states = []
 

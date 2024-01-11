@@ -1,8 +1,8 @@
 import numpy as np
 import casadi
-import single_pendulum_dynamics as single_pendulum_dynamics
-import MM_mpc_single_pendulum_conf as conf
-from MM_neural_network import create_model
+import F_single_pendulum_dynamics as F_single_pendulum_dynamics
+import F_mpc_single_pendulum_conf as conf
+from F_neural_network import create_model
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
@@ -17,7 +17,7 @@ class MpcSinglePendulum:
         self.w_v = conf.w_v                 # Velocity weight
         self.N = int(self.T/self.dt)        # I initalize the Opti helper from casadi
         self.model = create_model(2)        # Template of NN
-        self.model.load_weights("MM_neural_network.h5")
+        self.model.load_weights("F_neural_network.h5")
         self.weights = self.model.get_weights()
         self.mean, self.std = conf.init_scaler()
     
@@ -87,7 +87,7 @@ class MpcSinglePendulum:
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = single_pendulum_dynamics.f(np.array([q[i], v[i]]), u[i])
+            x_next = F_single_pendulum_dynamics.f(np.array([q[i], v[i]]), u[i])
             # Dynamics imposition
             self.opti.subject_to(q[i+1] == x_next[0])
             self.opti.subject_to(v[i+1] == x_next[1])
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     ax = fig.add_subplot()
     ax.scatter(viable_states[:,0], viable_states[:,1], c='r')
     ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b')
-    ax.scatter(positions, velocities, c='g')
+    ax.scatter(positions, velocities, c=(0, 1, 1), s=30)
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(12,8))
     plt.plot(positions)
     plt.xlabel('mpc step')
-    plt.ylabel('q [m]')
+    plt.ylabel('q [rad]')
     plt.title('Position')
     plt.show()
 
@@ -239,5 +239,5 @@ if __name__ == "__main__":
     df = pd.DataFrame(positions, columns=columns)
 
     # Export DataFrame to csv format
-    df.to_csv('../SinglePendulum/Plots_&_Animations/P1_Position.csv', index=False)
+    #df.to_csv('../SinglePendulum/Plots_&_Animations/P8_Position.csv', index=False)
 
