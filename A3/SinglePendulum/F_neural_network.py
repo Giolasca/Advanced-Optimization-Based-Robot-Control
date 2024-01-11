@@ -2,7 +2,6 @@ import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
 import matplotlib.pyplot as plt
-<<<<<<< HEAD
 import F_mpc_single_pendulum_conf as conf
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 import seaborn as sns
@@ -12,11 +11,6 @@ import seaborn as sns
 plot = 1    # Plot Confusion Matrix and ROC
 test = 1           # Run test
 
-=======
-import mpc_single_pendulum_conf as conf
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
->>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
 
 def create_model(input_shape):
     inputs = layers.Input(shape=(input_shape,))
@@ -45,18 +39,14 @@ if __name__ == "__main__":
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     # Train the model with loss history
-<<<<<<< HEAD
     history = model.fit(train_data, train_label, epochs=100, validation_data=(test_data, test_label))
-=======
-    history = model.fit(train_data, train_label, epochs=300, validation_data=(test_data, test_label))
->>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
 
     # Test trained neural network
     results = model.evaluate(test_data, test_label)
     print("Test accuracy:", results[1])
 
     # Save the model weights
-    model.save_weights("single_pendulum_funziona.h5")
+    model.save_weights("single_pendulum_test.h5")
 
     viable_states = []
     no_viable_states = []
@@ -68,53 +58,26 @@ if __name__ == "__main__":
     # Convert probabilities to binary predictions
     binary_label = (label_pred > 0.5).astype(int)
 
-    # Plot confusion matrix
-    cm = confusion_matrix(test_label, binary_label)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Non-Viable', 'Viable'], yticklabels=['Non-Viable', 'Viable'])
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title('Confusion Matrix')
-    plt.show()
-
-    # Plot loss function
-    plt.figure(figsize=(12, 8))
-    plt.plot(history.history['loss'], label='Training Loss')
-    plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.title('Training and Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.show()
-
     for i, label in enumerate(binary_label):
-<<<<<<< HEAD
         if (label):
             viable_states.append(test_data[i,:])
         else:
             no_viable_states.append(test_data[i,:])
-=======
-        if label:
-            viable_states.append(test_data[i, :])
-        else:
-            no_viable_states.append(test_data[i, :])
->>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
         
     viable_states = np.array(viable_states)
     no_viable_states = np.array(no_viable_states)
 
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot()
     if len(viable_states) != 0:
-        ax.scatter(viable_states[:, 0], viable_states[:, 1], c='r', label='viable')
+        ax.scatter(viable_states[:,0], viable_states[:,1], c='r', label='viable')
         ax.legend()
     if len(no_viable_states) != 0:
-        ax.scatter(no_viable_states[:, 0], no_viable_states[:, 1], c='b', label='non-viable')
+        ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b', label='non-viable')
         ax.legend()
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
-<<<<<<< HEAD
 
 
 if(plot):
@@ -148,5 +111,3 @@ if(plot):
     plt.ylabel('Loss')
     plt.legend()
     plt.show()
-=======
->>>>>>> fdaa98ba9e49875eb04ac661add885a842de99f5
