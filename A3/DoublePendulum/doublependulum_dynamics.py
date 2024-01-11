@@ -9,7 +9,7 @@ def f(x, u):
     m2 = 1 # mass of second link
     g = 9.81 # gravity
 
-    q1, q2, dq1, dq2 = x[0], x[1], x[2], x[3]
+    q1, dq1, q2, dq2 = x[0], x[1], x[2], x[3]
     u1, u2 = u[0], u[1]
 
     ddq1 = (l1**2 * l2 * m2 * dq1**2 * sin(-2 * q2 + 2 * q1)

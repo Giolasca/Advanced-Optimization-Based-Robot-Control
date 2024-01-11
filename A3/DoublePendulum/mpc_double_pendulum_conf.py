@@ -1,8 +1,22 @@
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import pandas as pd
 
-T = 1                   # OCP horizion
+T = 0.1                  # OCP horizion
 dt = 0.01               # OCP time step
 max_iter = 100          # Maximum iteration per point
+
+terminal_constraint_on = 0
+initial_state = np.array([np.pi, np.pi, 0, 0])
+q1_target = 3/4 * np.pi
+q2_target = 5/4 * np.pi
+
+mpc_step = 100
+
+noise = 0
+mean = 0
+std = 0.1
 
 lowerPositionLimit1 = 3/4*np.pi
 upperPositionLimit1 = 5/4*np.pi
@@ -18,16 +32,28 @@ upperVelocityLimit2 = 10
 lowerControlBound2 = -9.81
 upperControlBound2 = 9.81
 
-w_q1 = 10
-w_v1 = 10
-w_u1 = 10
+w_q1 = 1e2
+w_v1 = 1e-1
+w_u1 = 1e-4
 
-w_q2 = 10
-w_v2 = 10
-w_u2 = 10
+w_q2 = 1e2
+w_v2 = 1e-1
+w_u2 = 1e-4
 
-initial_state = np.array([np.pi, np.pi, 0, 0])
-mpc_step = 100
+scaler = StandardScaler()
+
+dataframe = pd.read_csv('double_data.csv')
+labels = dataframe['viable_states']
+dataset = dataframe.drop('viable_states', axis=1)
+train_size = 0.8
+train_data, test_data, train_label, test_label = train_test_split(dataset, labels, train_size=train_size, random_state=17)
+train_data = scaler.fit_transform(train_data)
+test_data = scaler.transform(test_data)
+
+def init_scaler():
+    scaler_mean = scaler.mean_
+    scaler_std = scaler.scale_
+    return scaler_mean, scaler_std
 
 # Function to create states array in a grid
 def grid_states(n_pos, n_vel):

@@ -3,11 +3,11 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
-T = 0.1                  # OCP horizion
-dt = 0.01               # OCP time step
+T = 0.1                  # MPC horizion
+dt = 0.01               # MPC time step
 max_iter = 100          # Maximum iteration per point
 
-terminal_constraint_on = 0
+terminal_constraint_on = 1
 initial_state = np.array([np.pi, -1])
 q_target = 5/4 * np.pi
 noise = 0
@@ -35,7 +35,7 @@ dataset = dataframe.drop('viable', axis=1)
 train_size = 0.8
 train_data, test_data, train_label, test_label = train_test_split(dataset, labels, train_size=train_size, random_state=17)
 train_data = scaler.fit_transform(train_data)
-test_data = scaler.transform(train_data)
+test_data = scaler.transform(test_data)
 
 def init_scaler():
     scaler_mean = scaler.mean_

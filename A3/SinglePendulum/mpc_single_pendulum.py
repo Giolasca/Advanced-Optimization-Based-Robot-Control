@@ -184,7 +184,7 @@ if __name__ == "__main__":
     no_viable_states = []
 
     for i, label in enumerate(label_pred):
-        if label>0.5:
+        if label > 0.5:
             viable_states.append(state_array[i,:])
         else:
             no_viable_states.append(state_array[i,:])
