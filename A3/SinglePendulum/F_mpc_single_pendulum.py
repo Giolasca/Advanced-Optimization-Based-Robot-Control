@@ -1,10 +1,9 @@
 import numpy as np
 import casadi
-import F_single_pendulum_dynamics as F_single_pendulum_dynamics
+import F_single_pendulum_dynamics as single_pendulum_dynamics
 import F_mpc_single_pendulum_conf as conf
 from F_neural_network import create_model
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import pandas as pd
 
 class MpcSinglePendulum:
@@ -17,27 +16,29 @@ class MpcSinglePendulum:
         self.w_v = conf.w_v                 # Velocity weight
         self.N = int(self.T/self.dt)        # I initalize the Opti helper from casadi
         self.model = create_model(2)        # Template of NN
-        self.model.load_weights("F_neural_network.h5")
+        self.model.load_weights("FF_neural_network.h5")
         self.weights = self.model.get_weights()
         self.mean, self.std = conf.init_scaler()
     
+
     def nn_to_casadi(self, params, x):
         out = np.array(x)
-        iteration = 0
+        it = 0
 
         for param in params:
             param = np.array(param.tolist())
 
-            if iteration % 2 == 0:
+            if it % 2 == 0:
                 out = out @ param
             else:
                 out = param + out
                 for i, item in enumerate(out):
                     out[i] = casadi.fmax(0., casadi.MX(out[i]))
 
-            iteration += 1
+            it += 1
 
         return casadi.MX(out[0])
+
     
     def solve(self, x_init, X_guess = None, U_guess = None):
         self.opti = casadi.Opti()                   # N is the size of the vector we want to realize, the number of steps we want to compute. We create a vector containing all the states of size N+1, 
@@ -87,7 +88,7 @@ class MpcSinglePendulum:
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = F_single_pendulum_dynamics.f(np.array([q[i], v[i]]), u[i])
+            x_next = single_pendulum_dynamics.f(np.array([q[i], v[i]]), u[i])
             # Dynamics imposition
             self.opti.subject_to(q[i+1] == x_next[0])
             self.opti.subject_to(v[i+1] == x_next[1])
@@ -99,20 +100,23 @@ class MpcSinglePendulum:
         # Bounds constraints
         for i in range(self.N+1):
             # Position bounds
-            self.opti.subject_to(self.opti.bounded(conf.lowerPositionLimit, q[i], conf.upperPositionLimit))
+            self.opti.subject_to(q[i] <= conf.upperPositionLimit)
+            self.opti.subject_to(q[i] >= conf.lowerPositionLimit)
 
             # Velocity bounds
-            self.opti.subject_to(self.opti.bounded(conf.lowerVelocityLimit, v[i], conf.upperVelocityLimit))
+            self.opti.subject_to(v[i] <= conf.upperVelocityLimit)
+            self.opti.subject_to(v[i] >= conf.lowerVelocityLimit)
             
             if (i<self.N):
                 # Control bounds
-                self.opti.subject_to(self.opti.bounded(conf.lowerControlBound, u[i], conf.upperControlBound))
-
+                self.opti.subject_to(u[i] <= conf.upperControlBound)
+                self.opti.subject_to(u[i] >= conf.lowerControlBound)
+               
         # Terminal constraint (NN)
-        state = [(q[self.N] - self.mean[0])/self.std[0], (v[self.N] - self.mean[1])/self.std[1]]
+        state = [(q[self.N] - self.mean[0])/self.std[0], (v[self.N] - self.mean[1])/self.std[1]]    # Normalize the state manually
         if conf.terminal_constraint_on:
-            self.opti.subject_to(self.nn_to_casadi(self.weights, state) > 1)
-        
+            self.opti.subject_to(self.nn_to_casadi(self.weights, state) > 1.6)
+
         # self.opti.callback(lambda i: print(i))
 
         return self.opti.solve()
@@ -123,31 +127,36 @@ if __name__ == "__main__":
     # Instance of OCP solver
     mpc = MpcSinglePendulum()
     
-    initial_state = conf.initial_state
-    actual_trajectory = []
-    actual_inputs = []
+    initial_state = conf.initial_state     # Initial state of the pendulum (position and velocity)
+    actual_trajectory = []                 # Lists to store the trajectory during the MPC iterations
+    actual_inputs = []                     # Lists to store the inputs during the MPC iterations
 
-    mpc_step = conf.mpc_step
+    mpc_step = conf.mpc_step          # Number of MPC steps
     new_state_guess = np.zeros((2, mpc.N+1))
     new_input_guess = np.zeros((mpc.N))
 
+    # First run
     sol = mpc.solve(initial_state)
     actual_trajectory.append(np.array([sol.value(mpc.q[1]), sol.value(mpc.v[1])]))
     actual_inputs.append(sol.value(mpc.u[0]))
-    # Dobbiamo creare una state_guess 2 x N+1
+
+    # We need to create a state_guess of size 2 x N+1
     for i in range(mpc.N):
         new_state_guess[0, i] = sol.value(mpc.q[i+1])
         new_state_guess[1, i] = sol.value(mpc.v[i+1])
-    # Dobbiamo creare una input_guess di dimensione N
+
+    # We need to create an input_guess of size N
     for i in range(mpc.N-1):
         new_input_guess[i] = sol.value(mpc.u[i+1])
-        
+    
+    # Update the state and input guesses for the next MPC iteration
     for i in range(mpc_step):
         noise = np.random.normal(conf.mean, conf.std, actual_trajectory[i].shape)
         if conf.noise:
             init_state = actual_trajectory[i] + noise
         else:
             init_state = actual_trajectory[i]
+
         try:
             sol = mpc.solve(init_state, new_state_guess, new_input_guess)
         except RuntimeError as e:
@@ -163,9 +172,13 @@ if __name__ == "__main__":
                 print(e)
         actual_trajectory.append(np.array([sol.value(mpc.q[1]), sol.value(mpc.v[1])]))
         actual_inputs.append(sol.value(mpc.u[0]))
+
+        # Update state_guess for the next iteration
         for k in range(mpc.N):
             new_state_guess[0, k] = sol.value(mpc.q[k+1])
             new_state_guess[1, k] = sol.value(mpc.v[k+1])
+
+        # Update input_guess for the next iteration
         for j in range(mpc.N-1):
             new_input_guess[j] = sol.value(mpc.u[j+1])
         print("Step", i+1, "out of", mpc_step, "done")
@@ -173,6 +186,7 @@ if __name__ == "__main__":
     positions = []
     velocities = []
 
+    # Extract positions and velocities from the actual trajectory
     for i, state in enumerate(actual_trajectory):
         positions.append(actual_trajectory[i][0])
         velocities.append(actual_trajectory[i][1])
@@ -198,7 +212,7 @@ if __name__ == "__main__":
     ax = fig.add_subplot()
     ax.scatter(viable_states[:,0], viable_states[:,1], c='r')
     ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b')
-    ax.scatter(positions, velocities, c=(0, 1, 1), s=30)
+    ax.scatter(positions, velocities, color=(0, 1, 1), s=30)
     ax.set_xlabel('q [rad]')
     ax.set_ylabel('dq [rad/s]')
     plt.show()
@@ -239,5 +253,5 @@ if __name__ == "__main__":
     df = pd.DataFrame(positions, columns=columns)
 
     # Export DataFrame to csv format
-    #df.to_csv('../SinglePendulum/Plots_&_Animations/P8_Position.csv', index=False)
+    df.to_csv('../SinglePendulum/Plots_&_Animations/P3_Position_noise.csv', index=False)
 

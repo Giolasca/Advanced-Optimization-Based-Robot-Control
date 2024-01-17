@@ -1,5 +1,6 @@
 import tensorflow as tf 
 from tensorflow.keras import layers
+from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
 import matplotlib.pyplot as plt
 import F_mpc_single_pendulum_conf as conf
@@ -8,16 +9,14 @@ import seaborn as sns
 
 
 # Plot stuff and tests
-plot = 1    # Plot Confusion Matrix and ROC
+plot = 0    # Plot Confusion Matrix and ROC
 test = 1           # Run test
-
 
 def create_model(input_shape):
     inputs = layers.Input(shape=(input_shape,))
     out1 = layers.Dense(64, activation='relu')(inputs)
     out2 = layers.Dense(32, activation='relu')(out1)
-    out3 = layers.Dense(16, activation='relu')(out2)
-    outputs = layers.Dense(1, activation='relu')(out3)
+    outputs = layers.Dense(1, activation='relu')(out2)
 
     model = tf.keras.Model(inputs, outputs)
     return model
@@ -35,18 +34,21 @@ if __name__ == "__main__":
     model.summary()
     tf.keras.utils.plot_model(model, to_file='model_summary.png', show_shapes=True)
 
+    # Definisci l'early stopping
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
     # Compile the model
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     # Train the model with loss history
-    history = model.fit(train_data, train_label, epochs=100, validation_data=(test_data, test_label))
+    history = model.fit(train_data, train_label, epochs=300, validation_data=(test_data, test_label), callbacks=[early_stopping])
 
     # Test trained neural network
     results = model.evaluate(test_data, test_label)
     print("Test accuracy:", results[1])
 
     # Save the model weights
-    model.save_weights("single_pendulum_test.h5")
+    model.save_weights("single_pendulum.h5")
 
     viable_states = []
     no_viable_states = []

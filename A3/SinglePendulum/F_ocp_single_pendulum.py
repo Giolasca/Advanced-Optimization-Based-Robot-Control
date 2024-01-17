@@ -1,6 +1,6 @@
 import numpy as np
 import casadi
-import single_pendulum_dynamics as single_pendulum_dynamics
+import F_single_pendulum_dynamics as single_pendulum_dynamics
 import multiprocessing
 import F_ocp_single_pendulum_conf as conf
 import matplotlib.pyplot as plt
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         # I define the arguments to pass to the functions: the indexes necessary to split the states grid
         args = []
         for i in range(conf.num_processes):
-            args.append([int(indexes[i]), int(indexes[i+1])])
+            args.append((int(indexes[i]), int(indexes[i+1])))
 
         # I initiate the pool
         pool = multiprocessing.Pool(processes=conf.num_processes)

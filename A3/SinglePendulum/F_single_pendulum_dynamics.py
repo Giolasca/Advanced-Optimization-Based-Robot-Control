@@ -3,8 +3,8 @@ import numpy as np
 
 def f(x, u):
     #data definitions
-    dt = 0.01           #time step
-    l = 1               #length of the link
+    dt = 0.01           # time step
+    l = 1               # length of the link
     m = 1               # mass of the link
     g = 9.81            # gravity
 

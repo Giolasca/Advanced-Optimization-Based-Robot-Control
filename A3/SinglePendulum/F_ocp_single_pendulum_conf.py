@@ -29,15 +29,13 @@ def grid_states(n_pos, n_vel):
     possible_v = np.linspace(lowerVelocityLimit, upperVelocityLimit, num=n_vel)
     state_array = np.zeros((n_ics, 2))
 
-    j = k = 0
-    for i in range (n_ics):
-        state_array[i,:] = np.array([possible_q[j], possible_v[k]])
-        k += 1
-        if (k == n_vel):
-            k = 0
-            j += 1
+    i = 0
+    for q in possible_q:
+        for v in possible_v:
+            state_array[i, :] = np.array([q, v])
+            i += 1
 
-    return n_ics, state_array
+    return state_array
 
 
 # Function to create states array taken from a uniform distribution
