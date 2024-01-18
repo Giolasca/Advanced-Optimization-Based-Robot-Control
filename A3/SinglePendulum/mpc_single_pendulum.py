@@ -1,8 +1,8 @@
 import numpy as np
 import casadi
-import F_single_pendulum_dynamics as single_pendulum_dynamics
-import F_mpc_single_pendulum_conf as conf
-from F_neural_network import create_model
+import single_pendulum_dynamics as single_pendulum_dynamics
+import mpc_single_pendulum_conf as conf
+from neural_network import create_model
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -16,7 +16,7 @@ class MpcSinglePendulum:
         self.w_v = conf.w_v                 # Velocity weight
         self.N = int(self.T/self.dt)        # I initalize the Opti helper from casadi
         self.model = create_model(2)        # Template of NN
-        self.model.load_weights("FF_neural_network.h5")
+        self.model.load_weights("neural_network_v2.h5")
         self.weights = self.model.get_weights()
         self.mean, self.std = conf.init_scaler()
     

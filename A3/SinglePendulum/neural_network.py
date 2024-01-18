@@ -3,7 +3,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
 import matplotlib.pyplot as plt
-import F_mpc_single_pendulum_conf as conf
+import mpc_single_pendulum_conf as conf
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 import seaborn as sns
 
