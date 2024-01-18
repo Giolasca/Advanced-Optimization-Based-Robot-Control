@@ -1,8 +1,8 @@
 import numpy as np
 import casadi
-import F_double_pendulum_dynamics as double_pendulum_dynamics
+import double_pendulum_dynamics as double_pendulum_dynamics
 import multiprocessing
-import F_ocp_double_pendulum_conf as conf
+import ocp_double_pendulum_conf as conf
 import matplotlib.pyplot as plt
 import pandas as pd
 import time

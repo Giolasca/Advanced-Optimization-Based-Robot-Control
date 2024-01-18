@@ -1,5 +1,5 @@
 import numpy as np
-import F_mpc_double_pendulum_conf as conf
+import mpc_double_pendulum_conf as conf
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd

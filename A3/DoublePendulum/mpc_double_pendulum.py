@@ -1,8 +1,8 @@
 import numpy as np
 import casadi
-import F_double_pendulum_dynamics as double_pendulum_dynamics
-import F_mpc_double_pendulum_conf as conf
-from F_neural_network import create_model
+import double_pendulum_dynamics as double_pendulum_dynamics
+import mpc_double_pendulum_conf as conf
+from neural_network import create_model
 import matplotlib.pyplot as plt
 import pandas as pd
 
