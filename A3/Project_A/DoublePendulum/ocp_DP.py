@@ -138,16 +138,16 @@ if __name__ == "__main__":
 
     # Generate an array of states either randomly or in a gridded pattern
     if (conf.grid == 1):
-        n_pos_q1 = 3
-        n_vel_v1 = 6   # 2 - 3 - 6 - 11 - 21 
+        n_pos_q1 = 21
+        n_vel_v1 = 21   
         n_pos_q2 = 21
         n_vel_v2 = 21
-        n_ics = n_pos_q1 * n_vel_v1 * n_pos_q2 * n_vel_v2
+        tot_points = n_pos_q1 * n_vel_v1 * n_pos_q2 * n_vel_v2
         state_array = conf.grid_states(n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2)
     else:
         num_pairs = 10  
         state_array = conf.random_states(num_pairs)
-    
+
     def ocp_single_pendulum(index):
         states = []         # Buffer to store initial states
 
@@ -162,10 +162,11 @@ if __name__ == "__main__":
         return states
 
     # Multi process execution
+    points = conf.end_index - conf.start_index
     print("Multiprocessing execution started, number of processes:", conf.num_processes)
-        
+    
     # Subdivide the states grid in equal spaces proportional to the number of processes
-    indexes = np.linspace(0, n_ics, num=conf.num_processes+1)
+    indexes = np.linspace(0, points, num=conf.num_processes+1)
 
     # I define the arguments to pass to the functions: the indexes necessary to split the states grid
     args = []
@@ -195,6 +196,10 @@ if __name__ == "__main__":
     seconds = tot_time - hours*3600 - minutes*60
     print("Total elapsed time: {}h {}min {:.2f}s".format(hours, minutes, seconds))
 
+    # Work in progress
+    percentage = conf.end_index/tot_points*100
+    print("Total points: {}  Calculated points: {} Progress percentage: {:.2f}%".format(tot_points, conf.end_index, percentage))
+
     # Regroup the results into 2 lists of viable and non viable states
     x0_costs = np.array(results[0])  
 
@@ -209,7 +214,7 @@ if __name__ == "__main__":
     })
 
     # Salva il DataFrame in un file CSV
-    df.to_csv('ocp_data_SP.csv', index=False)
+    df.to_csv('ocp_data_DP.csv', index=False)
 
 
 # Plotting the cost over the initial states

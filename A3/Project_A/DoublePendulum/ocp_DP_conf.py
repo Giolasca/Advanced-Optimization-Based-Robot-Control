@@ -3,7 +3,7 @@ import random
 
 ### Execution methods
 multiproc = 1
-num_processes = 4   # Number of processor
+num_processes = 4  # Number of processor
 grid = 1
 
 ### Horizon parameters
@@ -37,6 +37,10 @@ w_q2 = 1e2
 w_v2 = 1e-1
 w_u2 = 1e-4
 
+### To spit the state_array
+start_index = 0
+end_index = 21*21*21*3    # 3 - 6 - 9  ... 15 - 18 - 21
+
 # Function to create states array in a grid
 def grid_states(n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2):
     n_ics = n_pos_q1 * n_pos_q2 * n_vel_v1 * n_vel_v2
@@ -54,6 +58,7 @@ def grid_states(n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2):
                     state_array[i, :] = np.array([q1, v1, q2, v2])
                     i += 1
 
+    state_array = state_array[start_index:end_index]
     return state_array
 
 
