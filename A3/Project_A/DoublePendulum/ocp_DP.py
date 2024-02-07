@@ -130,8 +130,8 @@ if __name__ == "__main__":
 
     # Generate an array of states either randomly or in a gridded pattern
     if (conf.grid == 1):
-        n_pos_q1 = 3
-        n_vel_v1 = 6   # 2 - 3 - 6 - 11 - 21 
+        n_pos_q1 = 21
+        n_vel_v1 = 21   # 2 - 3 - 6 - 11 - 21 
         n_pos_q2 = 21
         n_vel_v2 = 21
         n_ics = n_pos_q1 * n_vel_v1 * n_pos_q2 * n_vel_v2
@@ -165,6 +165,8 @@ if __name__ == "__main__":
     # Multi process execution
     if (conf.multiproc == 1):
 
+        print("Multiprocessing execution started, number of processes:", conf.num_processes)
+
         # Subdivide the states grid in equal spaces proportional to the number of processes
         indexes = np.linspace(0, state_array.shape[0], num=conf.num_processes+1)
 
@@ -196,6 +198,14 @@ if __name__ == "__main__":
         hours = int((tot_time - seconds - minutes*60) / 3600)
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
+        # Save results to CSV
+        x_0_buffer_combined = []
+        cost_buffer_combined = []
+        for result in results:
+            x_0_buffer_combined.extend(results[0])
+            cost_buffer_combined.extend(results[1])
+
+        ocp.save_to_csv(x_0_buffer_combined, cost_buffer_combined, "ocp_data.csv")
 
             
     # Single process execution
@@ -229,3 +239,5 @@ if __name__ == "__main__":
         minutes = (tot_time - seconds) / 60        
         hours = (tot_time - seconds - minutes*60) / 3600
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
+
+        ocp.save_to_csv(x_0_buffer, cost_buffer, "ocp_data.csv")
