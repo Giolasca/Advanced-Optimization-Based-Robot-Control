@@ -16,7 +16,7 @@ class OcpSinglePendulum:
         self.w_u = conf.w_u              # Input weight
         self.w_v = conf.w_v              # Velocity weight
 
-    def save_to_csv(x_0_buffer, cost_buffer, filename):
+    def save_to_csv(self, x_0_buffer, cost_buffer, filename):
         # Estrai q e v dai buffer
         q_values = [state[0] for state in x_0_buffer]
         v_values = [state[1] for state in x_0_buffer]
@@ -167,6 +167,13 @@ if __name__ == "__main__":
         hours = int((tot_time - seconds - minutes*60) / 3600)
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
+        # Combine results from multiprocessing
+        x_0_buffer_combined = []
+        cost_buffer_combined = []
+        for result in results:
+            x_0_buffer_combined.extend(result[0])
+            cost_buffer_combined.extend(result[1])
+
     # Single process execution
     else:
         print("Single process execution started")
@@ -201,10 +208,10 @@ if __name__ == "__main__":
     print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
     # Salva i dati in un file CSV
-    ocp.save_to_csv(x_0_buffer, cost_buffer, 'ocp_data.csv')
+    ocp.save_to_csv(x_0_buffer_combined, cost_buffer_combined, 'ocp_data.csv')
 
     # Plotting the cost over the initial states
-    plt.scatter(np.array(x_0_buffer)[:, 0], np.array(x_0_buffer)[:, 1], c=cost_buffer, cmap='viridis')
+    plt.scatter(np.array(x_0_buffer_combined)[:, 0], np.array(x_0_buffer_combined)[:, 1], c=cost_buffer, cmap='viridis')
     plt.xlabel('Initial Position (q)')
     plt.ylabel('Initial Velocity (v)')
     plt.title('Cost over Initial States')
