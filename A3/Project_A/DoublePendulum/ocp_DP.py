@@ -20,7 +20,7 @@ class OcpDoublePendulum:
         self.w_u2 = conf.w_u2              # Input weight
         self.w_v2 = conf.w_v2              # Velocity weight
 
-    def save_to_csv(x_0_buffer, cost_buffer, filename):
+    def save_to_csv(self, x_0_buffer, cost_buffer, filename):
         # Estrai q e v dai buffer
         q1_values = [state[0] for state in x_0_buffer]
         v1_values = [state[1] for state in x_0_buffer]
@@ -153,7 +153,7 @@ if __name__ == "__main__":
                 sol = ocp.solve(x)
                 x_0_buffer.append([x[0], x[1], x[2], x[3]])
                 cost_buffer.append(sol.value(ocp.cost))
-                print("State: [{:.4f}  {:.4f}   {:.4f}   {:.4f}] Cost {:.4f}".format(*state, cost_buffer[-1]))
+                print("State: [{:.4f}  {:.4f}   {:.4f}   {:.4f}] Cost {:.4f}".format(*x, cost_buffer[-1]))
             except RuntimeError as e:                     # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
                     print("Could not solve for: [{:.4f}   {:.4f}   {:.4f}   {:.4f}]".format(*x))
@@ -198,12 +198,13 @@ if __name__ == "__main__":
         hours = int((tot_time - seconds - minutes*60) / 3600)
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
-        # Save results to CSV
-        x_0_buffer_combined = []
-        cost_buffer_combined = []
-        for result in results:
-            x_0_buffer_combined.extend(results[0])
-            cost_buffer_combined.extend(results[1])
+
+        # I regroup the results into 2 lists of viable and non viable states
+        x_0_buffer_combined = np.array(results[0][0])
+        cost_buffer_combined = np.array(results[0][1])
+        for i in range(conf.num_processes-1):
+            x_0_buffer_combined = np.concatenate((x_0_buffer_combined, np.array(results[i+1][0])))
+            cost_buffer_combined = np.concatenate((cost_buffer_combined, np.array(results[i+1][1])))
 
         ocp.save_to_csv(x_0_buffer_combined, cost_buffer_combined, "ocp_data.csv")
 

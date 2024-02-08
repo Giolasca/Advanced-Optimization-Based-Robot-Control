@@ -39,8 +39,8 @@ w_v2 = 1e-1
 w_u2 = 1e-4
 
 ### To spit the state_array
-start_index = 21*21*21*0
-end_index = 21*21*21*3    # 3 - 6 - 9  ... 15 - 18 - 21
+start_index = 21*21*21*5+4500
+end_index = 21*21*21*5+4600    # 3 - 6 - 9  ... 15 - 18 - 21
 
 # Function to create states array in a grid
 def grid_states(n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2):
