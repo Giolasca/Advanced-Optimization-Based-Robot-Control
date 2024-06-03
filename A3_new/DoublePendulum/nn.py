@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 
 def create_model(input_shape):
     inputs = layers.Input(shape=(input_shape,))
-    out1 = layers.Dense(64, activation='relu')(inputs)
-    out2 = layers.Dense(32, activation='relu')(out1)
-    out3 = layers.Dense(16, activation='relu')(out2)
+    out1 = layers.Dense(128, activation='relu')(inputs)
+    out2 = layers.Dense(64, activation='relu')(out1)
+    out3 = layers.Dense(32, activation='relu')(out2)
     outputs = layers.Dense(1)(out3)
 
     model = tf.keras.Model(inputs, outputs)
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     y = data['Costs'].values.reshape(-1, 1)
 
     # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=29)
 
     # Standardize the features
     scaler_X = StandardScaler()

@@ -22,11 +22,11 @@ if __name__ == "__main__":
     data = pd.read_csv('ocp_data.csv')
 
     # Extract features (initial state) and target (cost)
-    X = data[['Initial Position (q)', 'Initial Velocity (v)']].values
-    y = data['Cost'].values.reshape(-1, 1)
+    X = data[['q', 'v']].values
+    y = data['cost'].values.reshape(-1, 1)
 
     # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=29)
 
     # Standardize the features
     scaler_X = StandardScaler()
@@ -40,6 +40,9 @@ if __name__ == "__main__":
 
     # Create the model using the create_model function
     model = create_model(input_shape=X_train_scaled.shape[1])
+
+    # Print the model summary
+    model.summary()
 
     # Compile the model
     model.compile(optimizer='adam', loss='mean_squared_error')

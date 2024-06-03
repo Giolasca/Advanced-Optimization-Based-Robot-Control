@@ -1,11 +1,8 @@
 import numpy as np
 import casadi
-import SP_dynamics as dyn
+import single_pendulum_dynamics
 import multiprocessing
-import ocp_SP_conf as conf
-import matplotlib.pyplot as plt
-import pandas as pd
-import time
+import ocp_single_pendulum_conf as conf
 
 class OcpSinglePendulum:
 
@@ -15,18 +12,7 @@ class OcpSinglePendulum:
         self.w_q = conf.w_q              # Position weight
         self.w_u = conf.w_u              # Input weight
         self.w_v = conf.w_v              # Velocity weight
-
-    def save_to_csv(self, x_0_buffer, cost_buffer, filename):
-        # Estrai q e v dai buffer
-        q_values = [state[0] for state in x_0_buffer]
-        v_values = [state[1] for state in x_0_buffer]
-
-        # Crea un DataFrame
-        df = pd.DataFrame({'q': q_values, 'v': v_values, 'cost': cost_buffer})
-
-        # Salva il DataFrame in un file CSV
-        df.to_csv(filename, index=False)
-
+    
     def solve(self, x_init, X_guess = None, U_guess = None):
         self.N = int(self.T/self.dt)                # I initalize the Opti helper from casadi
         self.opti = casadi.Opti()                   # N is the size of the vector we want to realize, the number of steps we want to compute. We create a vector containing all the states of size N+1, 
@@ -54,6 +40,11 @@ class OcpSinglePendulum:
             for i in range(self.N):
                 self.opti.set_initial(u[i], U_guess[i])
 
+        # Choosing solver
+        opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
+        s_opst = {"max_iter": int(conf.max_iter)}
+        self.opti.solver("ipopt", opts, s_opst)
+
         # Cost definition
         self.cost = 0
         self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
@@ -67,7 +58,7 @@ class OcpSinglePendulum:
         # Dynamics constraint
         for i in range(self.N):
             # Next state computation with dynamics
-            x_next = dyn.f(np.array([q[i], v[i]]), u[i])
+            x_next = single_pendulum_dynamics.f(np.array([q[i], v[i]]), u[i])
             # Dynamics imposition
             self.opti.subject_to(q[i+1] == x_next[0])
             self.opti.subject_to(v[i+1] == x_next[1])
@@ -79,83 +70,83 @@ class OcpSinglePendulum:
         # Bounds constraints
         for i in range(self.N+1):
             # Position bounds
-            self.opti.subject_to(self.opti.bounded(conf.q_min, q[i], conf.q_max))
+            self.opti.subject_to(self.opti.bounded(conf.lowerPositionLimit, q[i], conf.upperPositionLimit))
 
             # Velocity bounds
-            self.opti.subject_to(self.opti.bounded(conf.v_min, v[i], conf.v_max))
+            self.opti.subject_to(self.opti.bounded(conf.lowerVelocityLimit, v[i], conf.upperVelocityLimit))
             
             if (i<self.N):
                 # Control bounds
-                self.opti.subject_to(self.opti.bounded(conf.u_min, u[i], conf.u_max))
-
-        # Choosing solver
-        opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-        s_opst = {"max_iter": int(conf.max_iter)}
-        self.opti.solver("ipopt", opts, s_opst)
-
+                self.opti.subject_to(self.opti.bounded(conf.lowerControlBound, u[i], conf.upperControlBound))
+        
         return self.opti.solve()
 
 
 if __name__ == "__main__":
-    
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import time
+
+    multiproc = conf.multiproc
+    num_processes = conf.num_processes
+
+    # Creation of initial states grid
+    n_ics, state_array = conf.grid_states(conf.npos, conf.nvel)
+    # n_ics, state_array = conf.random_states(conf.nrandom)
+
     # Instance of OCP solver
     ocp = OcpSinglePendulum()
 
-    # Generate an array of states either randomly or in a gridded pattern
-    if (conf.grid == 1):
-        npos = 121
-        nvel = 121
-        n_ics = npos * nvel
-        state_array = conf.grid_states(npos, nvel)
-    else:
-        nrandom = 100
-        state_array = conf.random_states(nrandom)
-
-
     # Function definition to run in a process
-    def ocp_function_single_pendulum(index):
-        x_0_buffer = []
-        cost_buffer = []
+    def ocp_function(index):
+        # I create empy lists to store viable and non viable states
+        viable = []
+        no_viable = []
         # We divide the states grid in complementary subsets
         for i in range(index[0], index[1]):
-            state = state_array[i, :]
+            x = state_array[i, :]
             try:
-                sol = ocp.solve(state)
-                x_0_buffer.append([state[0], state[1]])
-                cost_buffer.append(sol.value(ocp.cost))
-                print("State: [{:.3f}  {:.3f}] Cost {:.3f}".format(*state, cost_buffer[-1]))
+                sol = ocp.solve(x)
+                viable.append([x[0], x[1]])
+                print("Feasible initial state found:", x)
             except RuntimeError as e:                     # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
-                    print("Could not solve for: [{:.3f}   {:.3f}]".format(*state))
+                    print("Non feasible initial state found:", x)
+                    no_viable.append([x[0], x[1]])
                 else:
                     print("Runtime error:", e)
-        return x_0_buffer, cost_buffer
+        return viable, no_viable
 
 
-    # Multi process execution
-    if (conf.multiproc == 1):
-        print("Multiprocessing execution started, number of processes:", conf.num_processes)
-        
-        # Subdivide the states grid in equal spaces proportional to the number of processes
-        indexes = np.linspace(0, n_ics, num=conf.num_processes+1)
+    if (multiproc == 1):
+        print("Multiprocessing execution started, number of processes:", num_processes)
+        # I subdivide the states grid in equal spaces proportional to the number of processes
+        indexes = np.linspace(0, n_ics, num=num_processes+1)
 
         # I define the arguments to pass to the functions: the indexes necessary to split the states grid
         args = []
-        for i in range(conf.num_processes):
-            args.append((int(indexes[i]), int(indexes[i+1])))
+        for i in range(num_processes):
+            args.append([int(indexes[i]), int(indexes[i+1])])
 
         # I initiate the pool
-        pool = multiprocessing.Pool(processes=conf.num_processes)
+        pool = multiprocessing.Pool(processes=num_processes)
 
         # Function to keep track of execution time
         start = time.time()
 
         # Multiprocess start
-        results = pool.map(ocp_function_single_pendulum, args)
+        results = pool.map(ocp_function, args)
 
         # Multiprocess end
         pool.close()
         pool.join()
+        
+        # I regroup the results into 2 lists of viable and non viable states
+        viable_states = np.array(results[0][0])
+        no_viable_states = np.array(results[0][1])
+        for i in range(num_processes-1):
+            viable_states = np.concatenate((viable_states, np.array(results[i+1][0])))
+            no_viable_states = np.concatenate((no_viable_states, np.array(results[i+1][1])))
 
         # Stop keeping track of time
         end = time.time()
@@ -167,20 +158,13 @@ if __name__ == "__main__":
         hours = int((tot_time - seconds - minutes*60) / 3600)
         print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
-        # Combine results from multiprocessing
-        x_0_buffer_combined = []
-        cost_buffer_combined = []
-        for result in results:
-            x_0_buffer_combined.extend(result[0])
-            cost_buffer_combined.extend(result[1])
 
-    # Single process execution
-    else:
+    else:               # Single process execution
         print("Single process execution started")
 
-        # Empty lists to store viable and non viable states
-        x_0_buffer = []
-        cost_buffer = []
+        # I create empty lists to store viable and non viable states
+        viable_states = []
+        no_viable_states = []
 
         # Keep track of execution time
         start = time.time()
@@ -188,32 +172,49 @@ if __name__ == "__main__":
         for state in state_array:
             try:
                 sol = ocp.solve(state)
-                x_0_buffer.append([state[0], state[1]])
-                cost_buffer.append(sol.value(ocp.cost))
-                print("Feasible initial state found:", state, "Cost:", sol.value(ocp.cost))
-            except RuntimeError as e:
+                viable_states.append([state[0], state[1]])
+                print("Feasible initial state found:", state)
+            except RuntimeError as e:      # We catch the runtime exception relative to absence of solution
                 if "Infeasible_Problem_Detected" in str(e):
-                    print("Could not solve for:", state)
+                    print("Non feasible initial state found:", state)
+                    no_viable_states.append([state[0], state[1]])
                 else:
                     print("Runtime error:", e)
 
-    # Stop keeping track of time
-    end = time.time()
+        # Stop keeping track of time
+        end = time.time()
 
-    # Execution time in a nice format
-    tot_time = end - start
-    seconds = tot_time % 60
-    minutes = (tot_time - seconds) / 60
-    hours = (tot_time - seconds - minutes * 60) / 3600
-    print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
+        viable_states = np.array(viable_states)
+        no_viable_states = np.array(no_viable_states)
 
-    # Salva i dati in un file CSV
-    ocp.save_to_csv(x_0_buffer_combined, cost_buffer_combined, 'ocp_data.csv')
+        # Execution time in a nice format
+        tot_time = end-start
+        seconds = tot_time % 60
+        minutes = (tot_time - seconds) / 60        
+        hours = (tot_time - seconds - minutes*60) / 3600
+        print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
 
-    # Plotting the cost over the initial states
-    plt.scatter(np.array(x_0_buffer_combined)[:, 0], np.array(x_0_buffer_combined)[:, 1], c=cost_buffer, cmap='viridis')
-    plt.xlabel('Initial Position (q)')
-    plt.ylabel('Initial Velocity (v)')
-    plt.title('Cost over Initial States')
-    plt.colorbar(label='Cost')
+    # Plot the overall viable and non viable states
+    fig = plt.figure(figsize=(12,8))
+    ax = fig.add_subplot()
+    if len(viable_states) != 0:
+        ax.scatter(viable_states[:,0], viable_states[:,1], c='r', label='viable')
+        ax.legend()
+    if len(no_viable_states) != 0:
+        ax.scatter(no_viable_states[:,0], no_viable_states[:,1], c='b', label='non-viable')
+        ax.legend()
+    ax.set_xlabel('q [rad]')
+    ax.set_ylabel('dq [rad/s]')
     plt.show()
+
+    # Unify both viable and non viable states with a flag to show wether they're viable or not
+    viable_states = np.column_stack((viable_states, np.ones(len(viable_states), dtype=int)))
+    no_viable_states = np.column_stack((no_viable_states, np.zeros(len(no_viable_states), dtype=int)))
+    dataset = np.concatenate((viable_states, no_viable_states))
+
+    # Create a DataFrame starting from the final array
+    columns = ['q', 'v', 'viable']
+    df = pd.DataFrame(dataset, columns=columns)
+
+    # Export DataFrame to csv format
+    df.to_csv('single_data.csv', index=False)

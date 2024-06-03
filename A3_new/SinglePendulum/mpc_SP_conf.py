@@ -3,14 +3,24 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
-T = 0.5                 # OCP horizion
-dt = 0.01               # OCP time step
+# Flag for imposing terminal cost
+'''
+terminal_cost = 0
+if terminal_cost:
+    T = 0.5                 # MPC horizion
+else:
+    T = 1
+'''
+T = 0.5
+terminal_cost = 0
+
+dt = 0.01               # MPC time step
 max_iter = 100          # Maximum iteration per point
 
-initial_state = np.array([3/4*np.pi,0])
+initial_state = np.array([np.pi, 0])
 q_target = 5/4*np.pi
 
-mpc_step = 50
+mpc_step = 30
 
 ### Constaints for the pendulum ###
 lowerPositionLimit = 3/4*np.pi
@@ -24,7 +34,6 @@ upperControlBound = 9.81
 w_q = 1e2
 w_v = 1e-1
 w_u = 1e-4
-
 
 ###  Dataset  ###
 dataframe = pd.read_csv("ocp_data.csv")

@@ -10,23 +10,24 @@ T = 0.5
 # Time step
 dt = 0.01  
 
-# Weight for position
-w_q = 1.0  
+### Weights for the first link ###
+w_q1 = 1e2
+w_v1 = 1e-1
+w_u1 = 1e-4
 
-# Weight for input
-w_u = 0.1  
-
-# Weight for velocity
-w_v = 1.0  
+### Weights for the second link ###
+w_q2 = 1e2
+w_v2 = 1e-1
+w_u2 = 1e-4
 
 # Target positions for the double pendulum
-q1_target = 5/4*np.pi  # Target position for the first pendulum
+q1_target = 3/4*np.pi  # Target position for the first pendulum
 q2_target = 5/4*np.pi  # Target position for the second pendulum
 
 # Position limits
-lowerPositionLimit1 = -3/4*np.pi
+lowerPositionLimit1 = 3/4*np.pi
 upperPositionLimit1 = 5/4*np.pi
-lowerPositionLimit2 = -3/4*np.pi
+lowerPositionLimit2 = 3/4*np.pi
 upperPositionLimit2 = 5/4*np.pi
 
 
@@ -43,10 +44,10 @@ lowerControlBound2 = -9.81
 upperControlBound2 = 9.81
 
 # Initial state [q1, v1, q2, v2]
-initial_state = [0.0, 0.0, 0.0, 0.0]
+initial_state = np.array([3/4*np.pi, 0, 3/4*np.pi, 5])
 
 # Number of MPC steps to simulate
-mpc_step = 50
+mpc_step = 100
 
 # Maximum number of iterations for the solver
 max_iter = 100
