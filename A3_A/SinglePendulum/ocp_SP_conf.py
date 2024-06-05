@@ -9,6 +9,7 @@ grid = 1
 T = 1.0          # OCP horizon size
 dt = 0.01        # OCP time step
 N = int(T/dt);   # Number of horizon step
+max_iter = 100   # Maximum iteration per point
 
 ### Constaints for the pendulum ###
 q_min = 3/4*np.pi
