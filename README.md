@@ -21,7 +21,7 @@ The viability kernel is the largest set of feasible states, starting from which 
 
 These two graphs are derived from two different experiments. On the right side, a regular grid was used, while on the left side, a random grid was employed. We believe that the particular shape observed is due to the fact that, at high velocities, a much more aggressive control action is required. This aggressive action may result in a violation of the control constraints.
 
-## A3
+## A3 - A
 The goal of the assignment focuses on learning a value function \( V \) that can then be used as a terminal cost in a Model Predictive Control (MPC) formulation to ensure that the problem to be solved is recursively feasible.
 
 This section details the steps followed during the project:
@@ -34,12 +34,13 @@ This section details the steps followed during the project:
 
 The aim of this project is to empirically show that the introduction of the terminal cost compensates for the decrease in the horizon length. By learning an approximate value function and incorporating it into the MPC formulation, we aim to maintain or improve the performance of the control system despite the shorter prediction horizon.
 
-
 ### Results for a single pendulum
 <div style="display: flex; justify-content: space-around;">
   <img src="A3_A\SinglePendulum\Plots_&_Animations\2D_graph.png" style="width: 47%; margin-right: 2%;"/>
-  <img src="A3_A\SinglePendulum\Plots_&_Animations\SinglePendulum.gif" alt="Impedance Control" style="width: 47%; margin-left: 2%;"/>
+  <img src="A3_A\SinglePendulum\Plots_&_Animations\SinglePendulum.gif" style="width: 47%; margin-left: 2%;"/>
 </div
+
+On the left, we have a 2D plot showing the cost for various configurations. On the right, there is a simulation GIF.
 
 ### Results for a double pendulum
 <img src="A3_A\DoublePendulum\Plots_&_Animations\DoublePendulum.gif"/>
