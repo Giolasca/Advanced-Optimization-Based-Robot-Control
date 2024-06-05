@@ -15,7 +15,7 @@ The goal of the assignment is to determine the viability kernel for a simple non
 The viability kernel is the largest set of feasible states, starting from which the system can always remain inside the set, therefore without violating the constraints. The viability kernel is the largest control invariant set, and its computation has been the subject of many research papers.
 
 <div style="display: flex; justify-content: space-around;">
-  <img src="images/osc_example.png" alt="Operational Space Controller" style="width: 45%;"/>
-  <img src="images/ic_example.gif" alt="Impedance Control" style="width: 45%;"/>
+  <img src="\A2\Images\OCPs\5g\4500p-5g.jpg" alt="Operational Space Controller" style="width: 45%;"/>
+  <img src="\A2\Images\OCPs\1g\4500p_1g_rand.jpg" alt="Impedance Control" style="width: 45%;"/>
 </div>
 
