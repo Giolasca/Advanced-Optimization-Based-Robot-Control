@@ -3,28 +3,25 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
-from tensorflow.keras import layers, regularizers
+from sklearn.metrics import mean_squared_error
+from tensorflow.keras import layers
 import matplotlib.pyplot as plt
 
 def create_model(input_shape):
     inputs = layers.Input(shape=(input_shape,))
-    x = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.01))(inputs)
-    x = layers.Dropout(0.3)(x)
-    x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.Dropout(0.3)(x)
-    x = layers.Dense(32, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
-    x = layers.Dropout(0.3)(x)
-    outputs = layers.Dense(1)(x)
+    out1 = layers.Dense(128, activation='relu')(inputs)
+    out2 = layers.Dense(64, activation='relu')(out1)
+    out3 = layers.Dense(32, activation='relu')(out2)
+    outputs = layers.Dense(1)(out3)
 
     model = tf.keras.Model(inputs, outputs)
     return model
 
 if __name__ == "__main__":
-    # Load the CSV dataset
-    data = pd.read_csv('ocp_data_DP_full.csv')
+    # Load the data
+    data = pd.read_csv('ocp_data_8.csv')
 
-    # Extract features (initial state) and target (cost)
+    # Extract features (initial state for double pendulum) and target (cost)
     X = data[['q1', 'v1', 'q2', 'v2']].values
     y = data['Costs'].values.reshape(-1, 1)
 
@@ -45,17 +42,15 @@ if __name__ == "__main__":
     model = create_model(input_shape=X_train_scaled.shape[1])
 
     # Compile the model
-    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
+    model.compile(optimizer='adam', loss='mean_squared_error')
 
     # Train the model
-    history = model.fit(X_train_scaled, y_train_scaled, epochs=50, batch_size=32, validation_data=(X_test_scaled, y_test_scaled))
+    model.fit(X_train_scaled, y_train_scaled, epochs=300, validation_data=(X_test_scaled, y_test_scaled))
 
     # Evaluate the model on the test set
     y_pred_scaled = model.predict(X_test_scaled)
     mse = mean_squared_error(y_test_scaled, y_pred_scaled)
-    mape = mean_absolute_percentage_error(y_test_scaled, y_pred_scaled)
     print(f'Mean Squared Error on Test Set: {mse}')
-    print(f'Mean Absolute Percentage Error on Test Set: {mape * 100:.2f}%')
 
     # Plotting the test batch
     plt.scatter(y_test_scaled, y_pred_scaled)
@@ -65,4 +60,18 @@ if __name__ == "__main__":
     plt.show()
 
     # Save the trained model
-    model.save('nn_DP_TensorFlow.h5')
+    model.save('ocp_nn_model.h5')
+
+    # Stato da prevedere
+    new_state = np.array([[5/4*np.pi, 0, 5/4*np.pi, -2]])
+
+    # Standardizzazione dello stato utilizzando lo stesso scaler utilizzato durante l'addestramento
+    new_state_scaled = scaler_X.transform(new_state)
+
+    # Fai la previsione utilizzando il modello addestrato
+    predicted_cost_scaled = model.predict(new_state_scaled)
+
+    # Desstandardizza la previsione per ottenere il risultato nella scala originale
+    predicted_cost = scaler_y.inverse_transform(predicted_cost_scaled)
+
+    print(f'Prevista cost per lo stato {new_state}: {predicted_cost[0, 0]}')

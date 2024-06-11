@@ -1,12 +1,13 @@
+# mpc_DP_conf.py
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
 ### Horizon parameters
-TC = 1           # Terminal cost
+TC = 0           # Terminal cost
 
-if TC: 
+if(TC==1): 
     T = 0.5      # OCP horizon 
 else:
     T = 1.0      # OCP horizon 
@@ -34,27 +35,26 @@ u2_min = -9.81
 u2_max = 9.81
 
 ### Weights for the pendulum ###
-w_q = 1e2       # Weight for position
+w_q = 1e3       # Weight for position
 w_v = 1e-1      # Weight for input
-w_u = 1e-3      # Weight for velocity
-w_tc = 1e3      # Weight for terminal cost
+w_u = 1e-4      # Weight for velocity
 
 ### Initial and target state
 initial_state = np.array([3/4*np.pi, 0, 3/4*np.pi, 2])
 
 # Target positions for the double pendulum
 q1_target = 4/4*np.pi  # Target position for the first pendulum
-q2_target = 4/4*np.pi  # Target position for the second pendulum
+q2_target = 4/4*np.pi # Target position for the second pendulum
 
 # Number of MPC steps to simulate
-mpc_step = 100
+mpc_step = 300
 
 
 ###  Dataset  ###
-dataframe = pd.read_csv("ocp_data_DP.csv")
+dataframe = pd.read_csv("combined_data.csv")
 labels = dataframe['Costs']
 dataset = dataframe.drop('Costs', axis=1)
-train_size = 0.95
+train_size = 0.8
 scaler = StandardScaler()
 train_data, test_data, train_label, test_label = train_test_split(dataset, labels, train_size=train_size, random_state=29)
 train_data = scaler.fit_transform(train_data)

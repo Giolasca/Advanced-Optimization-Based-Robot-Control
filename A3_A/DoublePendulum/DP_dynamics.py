@@ -27,6 +27,6 @@ def f(x, u):
             + l1 * (m1 + m2) * (sin(q2) * g * l2 * m2 - 2 * u2)
             ) / l2**2 / l1 / m2 / (m2 * cos(-2 * q2 + 2 * q1) - 2 * m1 - m2)
     
-    x_next = x + dt*np.array([dq1, dq2, ddq1, ddq2])
+    x_next = x + dt*np.array([dq1, ddq1, dq2, ddq2])
     
     return x_next

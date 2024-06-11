@@ -10,7 +10,7 @@ grid = 1
 T = 1.0          # OCP horizon size
 dt = 0.01        # OCP time step
 N = int(T/dt);   # Number of horizon step
-max_iter = 100   # Maximum iteration per point
+max_iter = 100
 
 ### Constaints for the first link###
 q1_min = 3/4*np.pi
@@ -39,8 +39,8 @@ w_v2 = 1e-1
 w_u2 = 1e-4
 
 ### To spit the state_array
-start_index = 21*21*21*5   
-end_index = 21*21*21*6    
+start_index = 21*21*21*0
+end_index = 21*21*21*21    # 3 - 6 - 9  ... 15 - 18 - 21
 tot_points = 21*21*21*21
 
 # Function to create states array in a grid

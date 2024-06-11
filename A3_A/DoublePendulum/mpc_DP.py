@@ -2,7 +2,7 @@ import numpy as np
 import casadi
 import DP_dynamics as DP_dynamics
 import mpc_DP_conf as conf
-from nn_DP_TensorFlow import create_model
+from nn import create_model
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
@@ -10,13 +10,13 @@ import os
 class MpcDoublePendulum:
 
     def __init__(self):
-        self.N = conf.N                 # MPC horizon
-        self.w_q = conf.w_q             # Position weight
-        self.w_v = conf.w_v             # Velocity weight
-        self.w_u = conf.w_u             # Input weight
+        self.N = conf.N                     # Number of steps
+        self.w_q = conf.w_q                 # Position weight
+        self.w_u = conf.w_u                 # Input weight
+        self.w_v = conf.w_v                 # Velocity weight
 
         self.model = create_model(4)        # Template of NN for double pendulum
-        self.model.load_weights("nn_DP_TensorFlow.h5")
+        self.model.load_weights("ocp_nn_model.h5")
         self.weights = self.model.get_weights()
         self.mean, self.std = conf.init_scaler()
     
@@ -80,6 +80,7 @@ class MpcDoublePendulum:
 
         state = [(q1[self.N] - self.mean[0])/self.std[0], (v1[self.N] - self.mean[1])/self.std[1], 
                  (q2[self.N] - self.mean[2])/self.std[2], (v2[self.N] - self.mean[3])/self.std[3]]
+        #state = [q1[self.N], v1[self.N], q2[self.N], v2[self.N]]
 
         # Cost definition
         self.cost = 0
@@ -88,10 +89,18 @@ class MpcDoublePendulum:
         for i in range(self.N+1):
             self.running_costs[i] = self.w_v * (v1[i]**2 + v2[i]**2)
             self.running_costs[i] += self.w_q * ((q1[i] - q1_target)**2 + (q2[i] - q2_target)**2)
+            #self.running_costs[i] += self.w_q * ((q1_target - q1[i])**2 + (q2_target - q2[i])**2)
             if (i<self.N):   # Check necessary since at the last step it doesn't make sense to consider the input                        
                 self.running_costs[i] += self.w_u * (u1[i]**2 + u2[i]**2)
-            self.cost += self.running_costs[i] + self.terminal_cost
-        self.opti.minimize(self.cost)
+            self.cost += self.running_costs[i] 
+
+        # Adding terminal cost from the neural network
+        if (conf.TC == 1):
+            self.cost +=  self.terminal_cost    
+            self.opti.minimize(self.cost)
+        else:
+            self.cost = self.cost
+            self.opti.minimize(self.cost)
 
         # Dynamics constraint
         for i in range(self.N):
@@ -121,12 +130,37 @@ class MpcDoublePendulum:
         opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
         s_opts = {"max_iter": int(conf.max_iter)}
         self.opti.solver("ipopt", opts, s_opts)
+        sol = self.opti.solve()
 
-        return self.opti.solve()
+        # Solver settings
+        '''
+        opts = {
+                'ipopt.print_level': 0,
+                'print_time': 0,
+                'ipopt.sb': 'yes',
+                'ipopt.max_iter': 1000,  # Increase the maximum number of iterations
+                'ipopt.tol': 1e-6,  # Adjust the tolerance if necessary
+                'ipopt.constr_viol_tol': 1e-6,  # Tolerance for constraint violations
+                }
 
+        # Set the solver with the new options
+        self.opti.solver("ipopt", opts)
+        # Solve the optimization problem
+        sol = self.opti.solve()'''
+        
+        # Stampa dei costi in esecuzione e del costo terminale
+        #for i in range(self.N+1):
+        #    running_cost_value = float(sol.value(self.running_costs[i]))
+        #    print(f"Running Cost at step {i}: {running_cost_value:.6f}")
+        #terminal_cost_value = float(sol.value(self.terminal_cost))
+        #print(f"Terminal Cost: {terminal_cost_value:.6f}")
+        #total_cost_value = float(sol.value(self.cost))
+        #print(f"Total Cost: {total_cost_value:.6f}")
+
+        return sol
 
 if __name__ == "__main__":
-    # Instance of OCP solver
+    # Instance of MCP solver
     mpc = MpcDoublePendulum()
 
     initial_state = conf.initial_state
@@ -179,8 +213,10 @@ if __name__ == "__main__":
             new_input_guess[0, j] = sol.value(mpc.u1[j+1])
             new_input_guess[1, j] = sol.value(mpc.u2[j+1])
         print("Step", i+1, "out of", mpc_step, "done")
-        print("Cost", sol.value(mpc.cost), "Running cost", sol.value(mpc.running_costs[-1]), "Terminal Cost", terminal_cost_value)
-        
+        #print("Cost", sol.value(mpc.cost), "Running cost", sol.value(mpc.running_costs[0]), "Terminal Cost", sol.value(mpc.terminal_cost))
+        print("Cost", sol.value(mpc.cost), "Running cost", sol.value(mpc.running_costs[-1]), "Terminal Cost", sol.value(mpc.terminal_cost))
+        print("Cost", sol.value(mpc.cost), "Running cost", sol.value(mpc.running_costs[-1]), "Terminal Cost", sol.value(terminal_cost_value))
+
     positions_q1 = []
     velocities_v1 = []
     positions_q2 = []
@@ -202,8 +238,7 @@ if __name__ == "__main__":
     plt.xlabel('mpc step')
     plt.ylabel('q1 [rad]')
     plt.title('Position q1')
-    plt.savefig(os.path.join(output_dir, 'position-q1_plot.png'))
-    plt.close(fig)
+    plt.show()
 
     # Velocity plot for v1
     fig = plt.figure(figsize=(12,8))
@@ -211,8 +246,7 @@ if __name__ == "__main__":
     plt.xlabel('mpc step')
     plt.ylabel('v1 [rad/s]')
     plt.title('Velocity v1')
-    plt.savefig(os.path.join(output_dir, 'velocity-v1_plot.png'))
-    plt.close(fig)
+    plt.show()
 
     # Position plot for q2
     fig = plt.figure(figsize=(12,8))
@@ -220,8 +254,7 @@ if __name__ == "__main__":
     plt.xlabel('mpc step')
     plt.ylabel('q2 [rad]')
     plt.title('Position q2')
-    plt.savefig(os.path.join(output_dir, 'position-q2_plot.png'))
-    plt.close(fig)
+    plt.show()
 
     # Velocity plot for v2
     fig = plt.figure(figsize=(12,8))
@@ -229,8 +262,7 @@ if __name__ == "__main__":
     plt.xlabel('mpc step')
     plt.ylabel('v2 [rad/s]')
     plt.title('Velocity v2')
-    plt.savefig(os.path.join(output_dir, 'velocity-v2_plot.png'))
-    plt.close(fig)
+    plt.show()
 
     # Torque plot for u1 and u2
     fig = plt.figure(figsize=(12,8))
@@ -240,12 +272,11 @@ if __name__ == "__main__":
     plt.ylabel('u [N/m]')
     plt.title('Torque')
     plt.legend()
-    plt.savefig(os.path.join(output_dir, 'torque_plot.png'))
-    plt.close(fig)
+    plt.show()
 
     # DataFrames for positions and torques
     columns_positions = ['Positions_q1', 'Positions_q2']
     df = pd.DataFrame({'Positions_q1': positions_q1, 'Positions_q2': positions_q2}, columns=columns_positions)
     
     # Export DataFrame to csv format
-    df.to_csv('/home/student/shared/orc/A3_A/DoublePendulum/Plots_&_Animations/DoublePendulum.csv', index=False)
+    df.to_csv('DoublePendulum.csv', index=False)

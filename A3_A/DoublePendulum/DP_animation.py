@@ -6,7 +6,7 @@ import pandas as pd
 
 # File path of the data
 # Path to the CSV file containing pendulum positions
-path = '/home/student/shared/orc/A3_A/DoublePendulum/Plots_&_Animations/DoublePendulum.csv'
+path = '/home/student/orc/RL/A3/A3_new/DoublePendulum/DoublePendulum.csv'
 
 # Positions from CSV file
 data = pd.read_csv(path)
@@ -67,7 +67,7 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, len(positions_q1), interval=50, blit=True)
 
 # Save the animation as a GIF file using Pillow
-animation_file_path = '/home/student/shared/orc/A3_A/DoublePendulum/Plots_&_Animations/DoublePendulum1.gif'
+animation_file_path = 'DoublePendulum1.gif'
 ani.save(animation_file_path, writer='pillow', fps=20)
 
 # Show the animation
