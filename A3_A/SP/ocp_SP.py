@@ -1,6 +1,6 @@
 import numpy as np
 import casadi
-import SP_dynamics as dynamics
+import SP_dynamics as SP_dynamics
 import ocp_SP_conf as config
 import multiprocessing
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ class SinglePendulumOCP:
         self.weight_velocity = config.w_v       # weight on velocity    
 
     def save_results(self, state_buffer, cost_buffer):        # Save results in a csv file to create the DataSet
-        filename = 'ocp_results.csv'
+        filename = 'ocp_data_SP.csv'
         positions = [state[0] for state in state_buffer]
         velocities = [state[1] for state in state_buffer]
         df = pd.DataFrame({'position': positions, 'velocity': velocities, 'cost': cost_buffer})
@@ -56,9 +56,9 @@ class SinglePendulumOCP:
             self.total_cost += self.running_cost[i]
         self.opti.minimize(self.total_cost)
 
+        # Dynamic constraint
         for i in range(self.N):
-            # Dynamic constraint
-            next_state = dynamics.f(np.array([position[i], velocity[i]]), control[i])
+            next_state = SP_dynamics.f(np.array([position[i], velocity[i]]), control[i])
             self.opti.subject_to(position[i + 1] == next_state[0])
             self.opti.subject_to(velocity[i + 1] == next_state[1])
 
@@ -66,23 +66,32 @@ class SinglePendulumOCP:
         self.opti.subject_to(position[0] == initial_state[0])
         self.opti.subject_to(velocity[0] == initial_state[1])
 
+        '''
         # Boundary constraints for position and velocity
-        #for i in range(self.N + 1):
-        #    self.opti.subject_to(self.opti.bounded(config.q_min, position[i], config.q_max))
-        #    self.opti.subject_to(self.opti.bounded(config.v_min, velocity[i], config.v_max))
-        #    if i < self.N:
-        #        self.opti.subject_to(self.opti.bounded(config.u_min, control[i], config.u_max))
+        for i in range(self.N + 1):
+            # Position bounds
+            self.opti.subject_to(self.opti.bounded(config.q_min, position[i], config.q_max))
+            
+            # Velocity bounds
+            self.opti.subject_to(self.opti.bounded(config.v_min, velocity[i], config.v_max))
+            
+            # Control bounds
+            if i < self.N:
+                self.opti.subject_to(self.opti.bounded(config.u_min, control[i], config.u_max))
+        '''
 
         # Choosing solver
-        solver_options = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-        solver_settings = {"max_iter": int(config.max_iter)}
-        self.opti.solver("ipopt", solver_options, solver_settings)
+        opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
+        s_opst = {"max_iter": int(config.max_iter)}
+        self.opti.solver("ipopt", opts, s_opst)
 
         return self.opti.solve()
 
 def ocp_task(index_range, ocp_solver, initial_states):
     state_buffer = []       # Buffer to store initial states
     cost_buffer = []        # Buffer to store optimal costs
+    
+    # Divide the states grid in complementary subsets
     for i in range(index_range[0], index_range[1]):
         initial_state = initial_states[i, :]
         try:
@@ -97,6 +106,7 @@ def ocp_task(index_range, ocp_solver, initial_states):
                 print("Runtime error:", e)
     return state_buffer, cost_buffer
 
+
 if __name__ == "__main__":
     # Instance of OCP solver
     ocp_solver = SinglePendulumOCP()
@@ -110,7 +120,7 @@ if __name__ == "__main__":
         num_random = 100
         initial_states = config.random_states(num_random)
 
-    # Multiprocess run
+    # Multi process execution
     if config.multiproc == 1:
         print("Multiprocessing execution started, number of processes:", config.num_processes)
         
@@ -131,7 +141,6 @@ if __name__ == "__main__":
 
         # End execution time
         end_time = time.time()
-        total_time = end_time - start_time
 
         # Store the results
         combined_state_buffer = []
@@ -154,13 +163,13 @@ if __name__ == "__main__":
         
         # End execution time
         end_time = time.time()
-        total_time = end_time - start_time
 
         # Store the results
         combined_state_buffer = state_buffer
         combined_cost_buffer = cost_buffer
 
     # Time in nice format
+    total_time = end_time - start_time
     hours = int(total_time // 3600)
     minutes = int((total_time % 3600) // 60)
     seconds = int(total_time % 60)
