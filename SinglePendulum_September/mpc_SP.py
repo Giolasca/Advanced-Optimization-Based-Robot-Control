@@ -2,8 +2,7 @@ import numpy as np
 import casadi
 import SP_dynamics as dynamics
 import mpc_SP_conf as config
-from nn_SP_v1 import create_model_v1
-#from nn_SP_v2 import create_model_v2
+from nn_SP import create_model
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
@@ -17,10 +16,10 @@ class MpcSinglePendulum:
         self.w_u = config.w_u                 # Input weight
         self.w_v = config.w_v                 # Velocity weight
         
-        self.model = create_model_v1(2)        # Template of NN
-        #self.model = create_model_v2(2)        # Template of NN
+        self.model = create_model(2)        # Template of NN
         self.model.load_weights(config.nn)
         self.weights = self.model.get_weights()
+        self.mean_x, self.std_x, self.mean_y, self.std_y = config.init_scaler()
     
     def save_results(self, positions, velocities, actual_inputs, total_costs, terminal_costs, filename):        
         total_costs.extend([None] * (len(positions) - len(total_costs)))
@@ -53,11 +52,11 @@ class MpcSinglePendulum:
         return casadi.MX(out[0])
 
     
-    def solve(self, x_init, X_guess = None, U_guess = None):
+    def solve(self, x_init, X_guess=None, U_guess=None):
         self.opti = casadi.Opti()  # Initialize the optimizer
-        
-        # Declaration of the variables in casaDi types
-        self.q = self.opti.variable(self.N+1)    # States
+
+        # Declaration of the variables in CasADi types
+        self.q = self.opti.variable(self.N+1)    # States (position)
         self.v = self.opti.variable(self.N+1)    # Velocities
         self.u = self.opti.variable(self.N)      # Control inputs
 
@@ -72,88 +71,94 @@ class MpcSinglePendulum:
         # State vector initialization
         if (X_guess is not None):
             for i in range(self.N+1):
-                self.opti.set_initial(q[i], X_guess[0,i])
-                self.opti.set_initial(v[i], X_guess[1,i])
+                self.opti.set_initial(q[i], X_guess[0, i])
+                self.opti.set_initial(v[i], X_guess[1, i])
         else:
             for i in range(self.N+1):
                 self.opti.set_initial(q[i], x_init[0])
                 self.opti.set_initial(v[i], x_init[1])
         
-        # Control input vector initalization
+        # Control input vector initialization
         if (U_guess is not None):
             for i in range(self.N):
                 self.opti.set_initial(u[i], U_guess[i])
 
         # Choosing solver
         opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-        s_opst = {"max_iter": int(config.max_iter)}
-        self.opti.solver("ipopt", opts, s_opst)
+        s_opts = {"max_iter": int(config.max_iter)}
+        self.opti.solver("ipopt", opts, s_opts)
 
-        # Terminal cost
-        state = [q[self.N], v[self.N]]
+        # Terminal cost (if enabled by config.TC)
+        state = [(q[self.N] - self.mean_x[0]) / self.std_x[0], (v[self.N] - self.mean_x[1]) / self.std_x[1]]
+        #state = [q[self.N-1], v[self.N-1]]
         self.terminal_cost = self.nn_to_casadi(self.weights, state)
         
         # Cost definition
         self.cost = 0
-        self.running_costs = [None,]*(self.N+1)      # Defining vector of Nones that will contain running cost values for each step
+        self.running_costs = [None,] * (self.N+1)  # Vector to hold running cost values for each step
         for i in range(self.N+1):
             self.running_costs[i] = self.w_v * v[i]**2
             self.running_costs[i] += self.w_q * (q[i] - q_target)**2
-            if (i<self.N):                           # Check necessary since at the last step it doesn't make sense to consider the input
+            if i < self.N:  # No input cost at the last step
                 self.running_costs[i] += self.w_u * u[i]**2
             self.cost += self.running_costs[i]
-        
-        # Adding terminal cost from the neural network
-        if (config.TC):
-            self.cost += self.terminal_cost**2
+
+        # Adding terminal cost from the neural network (if config.TC == 1)
+        if config.TC:
+            self.cost += self.terminal_cost
+
+        # Minimize the total cost
         self.opti.minimize(self.cost)
 
-        # Dynamics Constraint
+        # Dynamics constraint
         for i in range(self.N):
             x_next = dynamics.f(np.array([q[i], v[i]]), u[i])
             self.opti.subject_to(q[i+1] == x_next[0])
             self.opti.subject_to(v[i+1] == x_next[1])
 
-        # Initial state constraint       
+        # Initial state constraint
         self.opti.subject_to(q[0] == x_init[0])
         self.opti.subject_to(v[0] == x_init[1])
+        
+        if config.costraint:
+            # State bound constraints
+            for i in range(self.N+1):
+                self.opti.subject_to(q[i] >= config.q_min)
+                self.opti.subject_to(q[i] <= config.q_max)
+                self.opti.subject_to(v[i] >= config.v_min)
+                self.opti.subject_to(v[i] <= config.v_max)
 
-        # State bound constraints
-        for i in range(self.N+1):
-            self.opti.subject_to(q[i] <= config.q_min)
-            self.opti.subject_to(q[i] >= config.q_max)
-            self.opti.subject_to(v[i] <= config.v_min)
-            self.opti.subject_to(v[i] >= config.v_max)
-            #self.opti.subject_to(self.opti.bounded(config.q_min, q[i], config.q_max))
-            #self.opti.subject_to(self.opti.bounded(config.v_min, v[i], config.v_max))
-        for i in range(self.N):
-            self.opti.subject_to(u[i] <= config.u_min)
-            self.opti.subject_to(u[i] >= config.u_max)
-
-            #self.opti.subject_to(self.opti.bounded(config.u_min, u[i], config.u_max))
-
-
-        # Choosing solver
-        opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-        s_opts = {"max_iter": int(config.max_iter)}
-        self.opti.solver("ipopt", opts, s_opts)
-
+            # Input bound constraints
+            for i in range(self.N):
+                self.opti.subject_to(u[i] >= config.u_min)
+                self.opti.subject_to(u[i] <= config.u_max)
+        
         # Solve the optimization problem
         solv = self.opti.solve()
 
-        # Print execution costs and terminal costs
-        for i in range(self.N+1):
-            running_cost_value = float(solv.value(self.running_costs[i]))
-            print(f"Running Cost at step {i}: {running_cost_value:.6f}")
-            state_print = [solv.value(self.q)[i], solv.value(self.v)[i]]
-            print("State:", state_print)
-        state_tt = [solv.value(self.q)[self.N], solv.value(self.v)[self.N]]
-        terminal_cost_value = float(solv.value(self.terminal_cost))
-        print(f"State: {state_tt}, Terminal Cost: {terminal_cost_value:.6f}")
-        total_cost_value = float(solv.value(self.cost))
-        print(f"Total Cost: {total_cost_value:.6f}")
+        # === Debug window ===
+        current_state = np.array([solv.value(q[0]), solv.value(v[0])])  # Current state
+        rescaled_state = np.array([(current_state[0] - self.mean_x[0]) / self.std_x[0], (current_state[1] - self.mean_x[1]) / self.std_x[1]])  # Rescaled state
 
-        return self.opti.solve()
+        print("==== MPC Step Debug Info ====")
+        print(f"Current state: q = {current_state[0]:.4f}, v = {current_state[1]:.4f}")
+        print(f"Rescaled state: q' = {rescaled_state[0]:.4f}, v' = {rescaled_state[1]:.4f}")
+
+        # Display running costs
+        print(f"Running costs for each step:")
+        for i in range(self.N+1):
+            print(f"Step {i+1}: Running cost = {solv.value(self.running_costs[i]):.4f}")
+        
+        # Terminal cost (only if config.TC == 1)
+        if config.TC:
+            print(f"Terminal cost from NN: {solv.value(self.terminal_cost):.4f}")
+        
+        # Total cost
+        print(f"Total cost: {solv.value(self.cost):.4f}")
+        print("=============================")
+
+        return solv
+
 
 def plot_and_save(data, xlabel, ylabel, title, filename):
     fig = plt.figure(figsize=(12, 8))
@@ -169,6 +174,11 @@ if __name__ == "__main__":
 
     # Instance of OCP solver
     mpc = MpcSinglePendulum()
+
+    constr_status = "constrained" if config.costraint else "unconstrained"
+    print("==========================")
+    print(f"You're running the following test: target: {config.q_target}, "
+          f"initial state: {config.initial_state}, {constr_status} problem, TC = {config.TC}, N = {config.N}")
     
     initial_state = config.initial_state     # Initial state of the pendulum (position and velocity)
     actual_trajectory = []      # Buffer to store actual trajectory
