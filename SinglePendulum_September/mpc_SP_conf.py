@@ -4,15 +4,21 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 
 ### Horizon parameters
-TC = 1          # Terminal cost
+TC = 0          # Terminal cost
 costraint = 0   # handles constraints in the main code
+scenario_type = 0  # Introduce scenario type: 1 for T = 1, 0 for T = 0.01
 
-if TC: 
-    T = 0.01    # OCP horizon
-    N = 6 
+# Set T based on both TC and scenario_type
+if TC:
+    T = 0.01  # If terminal cost, T is fixed at 0.01
+    N = 5
 else:
-    T = 1     # OCP horizon
-    N = 50 
+    if scenario_type == 1:
+        T = 1   # Scenario with T = 1
+        N = 50
+    else:
+        T = 0.01  # Scenario with T = 0.01 
+        N = 50
 
 dt = 0.01        # OCP time step
 #N = int(T/dt)    # Number of horizon step
@@ -25,35 +31,32 @@ q_min = 3/4*np.pi
 q_max = 5/4*np.pi
 v_min = -10
 v_max = 10
+'''
 u_min = -9.81
 u_max = 9.81
-
+'''
 ### Weights for the pendulum ###
 w_q = 1e2       # Weight for position
-w_v = 1e-1      # Weight for input
-w_u = 1e-4      # Weight for velocity
+w_v = 1e-1      # Weight for velocity
+w_u = 1e-4      # Weight for input
 #w_tc = 1e2
 
 # Number of MPC steps to simulate
 mpc_step = 50
 
 # Model file name
-nn = "nn_SP_135_constr.h5"
 #nn = "nn_SP_135_unconstr.h5"
-#nn = "nn_SP_180_constr.h5"
 #nn = "nn_SP_180_unconstr.h5"
-#nn = "nn_SP_225_constr.h5"
-#nn = "nn_SP_225_unconstr.h5"
-#nn = "nn_SP_225_linear_unconstr.h5"
+nn = "nn_SP_225_unconstr.h5"
 
 # Initial and Target state 
-if nn in ["nn_SP_135_constr.h5", "nn_SP_135_unconstr.h5"]:
+if nn == "nn_SP_135_unconstr.h5":
     initial_state = np.array([5/4*np.pi, 0])
     q_target = 3/4 * np.pi
-elif nn in ["nn_SP_180_constr.h5", "nn_SP_180_unconstr.h5"]:
+elif nn == "nn_SP_180_unconstr.h5":
     initial_state = np.array([3/4*np.pi, 0])
     q_target = 4/4 * np.pi
-elif nn in ["nn_SP_225_constr.h5", "nn_SP_225_unconstr.h5", "nn_SP_225_linear_unconstr.h5"]:
+elif nn == "nn_SP_225_unconstr.h5":
     initial_state = np.array([3/4*np.pi, 0])
     q_target = 5/4 * np.pi
 else:
@@ -62,20 +65,12 @@ else:
 
 # Function to load dataframe based on the nn filename
 def load_dataframe(nn):
-    if nn == "nn_SP_135_constr.h5":
+    if nn == "nn_SP_135_unconstr.h5":
         return pd.read_csv("ocp_data_SP_target_135_constr.csv")
-    elif nn == "nn_SP_135_unconstr.h5":
-        return pd.read_csv("ocp_data_SP_target_135_unconstr.csv")
-    if nn == "nn_SP_180_constr.h5":
-        return pd.read_csv("ocp_data_SP_target_180_constr.csv")
     elif nn == "nn_SP_180_unconstr.h5":
         return pd.read_csv("ocp_data_SP_target_180_unconstr.csv")
-    if nn == "nn_SP_225_constr.h5":
-        return pd.read_csv("ocp_data_SP_target_225_constr.csv")
     elif nn == "nn_SP_225_unconstr.h5":
         return pd.read_csv("ocp_data_SP_target_225_unconstr.csv")
-    elif nn == "nn_SP_225_linear_unconstr.h5":
-        return pd.read_csv("ocp_data_SP_target_225_linear_unconstr.csv")
     else:
         raise ValueError("Unknown nn filename")
 

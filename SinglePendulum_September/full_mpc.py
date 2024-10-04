@@ -176,7 +176,7 @@ def plot_and_save(data, xlabel, ylabel, title, filename):
     plt.savefig(filename)
     plt.grid(True)
     plt.close(fig)
-
+    
 if __name__ == "__main__":
 
     # Instance of OCP solver
@@ -184,137 +184,123 @@ if __name__ == "__main__":
 
     constr_status = "constrained" if config.costraint else "unconstrained"
     print("==========================")
-    print(f"You're running the following test: target: {config.q_target}, "
-          f"initial state: {config.initial_state}, {constr_status} problem, TC = {config.TC}, N = {config.N}, T = {config.T}")
+    print(f"You're running the following test: target: {config.q_target}, {constr_status} problem, TC = {config.TC}, N = {config.N}")
+
+    # Number of random initial states
+    num_tests = 20
     
-    initial_state = config.initial_state     # Initial state of the pendulum (position and velocity)
-    actual_trajectory = []      # Buffer to store actual trajectory
-    actual_inputs = []          # Buffer to store actual inputs
-    total_costs = []            # Buffer to store total costs
-    terminal_costs = []         # Buffer to store terminal costs
-
-    mpc_step = config.mpc_step          # Number of MPC steps
-    new_state_guess = np.zeros((2, mpc.N+1))
-    new_input_guess = np.zeros((mpc.N))
-
-    # Start timer
-    start_time = time.time()
+    # Generating 20 random initial states within the specified ranges
+    q_range = [3/4*np.pi, 5/4*np.pi]
+    v_range = [-10, 10]
     
-    # First run
-    sol = mpc.solve(initial_state)
-    actual_trajectory.append(np.array([sol.value(mpc.q[0]), sol.value(mpc.v[0])]))
-    actual_inputs.append(sol.value(mpc.u[0]))
+    initial_states = np.zeros((num_tests, 2))  # To store all generated initial states
+    initial_states[:, 0] = np.random.uniform(q_range[0], q_range[1], num_tests)
+    initial_states[:, 1] = np.random.uniform(v_range[0], v_range[1], num_tests)
 
-    # Creation of state_guess of size 2 x N+1
-    for i in range(mpc.N):
-        new_state_guess[0, i] = sol.value(mpc.q[i+1])
-        new_state_guess[1, i] = sol.value(mpc.v[i+1])
-
-    # Creation of input_guess of size N
-    for i in range(mpc.N-1):
-        new_input_guess[i] = sol.value(mpc.u[i+1])
-    
-    # Update the state and input guesses for the next MPC iteration
-    for i in range(mpc_step):
-        init_state = actual_trajectory[i]
-
-        try:
-            sol = mpc.solve(init_state, new_state_guess, new_input_guess)
-        except RuntimeError as e:
-            if "Infeasible_Problem_Detected" in str(e):
-                print("")
-                print("======================================")
-                print("MPC stopped due to infeasible problem")
-                print("======================================")
-                print("")
-                print(mpc.opti.debug.show_infeasibilities())
-                break
-            else:
-                print(e)
-        
-        actual_trajectory.append(np.array([sol.value(mpc.q[1]), sol.value(mpc.v[1])]))
-        actual_inputs.append(sol.value(mpc.u[0]))
-        total_costs.append(sol.value(mpc.cost))
-        terminal_costs.append(sol.value(mpc.terminal_cost))
-
-        # Update state_guess for the next iteration
-        for k in range(mpc.N):
-            new_state_guess[0, k] = sol.value(mpc.q[k+1])
-            new_state_guess[1, k] = sol.value(mpc.v[k+1])
-
-        # Update input_guess for the next iteration
-        for j in range(mpc.N-1):
-            new_input_guess[j] = sol.value(mpc.u[j+1])
-        print("Step", i+1, "out of", mpc_step, "done")
-        
-    # Stop timer
-    end_time = time.time()
-    
-    # Time in nice format
-    tot_time = end_time - start_time
-    hours = int(tot_time / 3600)
-    minutes = int((tot_time - 3600*hours) / 60)       
-    seconds = tot_time - hours*3600 - minutes*60
-    print("Total elapsed time: {}h {}m {:.2f}s".format(hours, minutes, seconds))
-
-    # Initialize empty lists
-    positions = []
-    velocities = []
-
-    # Extract positions and velocities from the actual trajectory
-    for i, state in enumerate(actual_trajectory):
-        positions.append(actual_trajectory[i][0])
-        velocities.append(actual_trajectory[i][1])
-
-    '''
-    # Generate grid of states
-    _, state_array = config.grid_states(121, 121)
-
-    # Predict costs using the neural network
-    cost_pred = mpc.model.predict(state_array)
-
-    # Plotting the results
-    fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot()
-
-    # Create a scatter plot with colormap based on predicted costs
-    sc = ax.scatter(state_array[:, 0], state_array[:, 1], c=cost_pred, cmap='viridis')
-    plt.colorbar(sc, ax=ax, label='Predicted Cost')
-
-    # Overlay the trajectory on the colormap
-    ax.scatter(positions, velocities, color='red', s=30, label='Trajectory')
-    ax.set_xlabel('q [rad]')
-    ax.set_ylabel('dq [rad/s]')
-    ax.legend()
-    plt.title('State Space with Predicted Costs and Trajectory')
-    plt.show()
-    '''
-
-    # Create directory for plots
+    # Create main directory for plots
     output_dir = 'Plots_&_Animations'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Extract the suffix from the file name
-    suffix = config.nn.split('_SP_')[-1].replace('.h5', '')
+    # Start timer
+    start_time = time.time()
 
-    # Create dedicate directory for the test
-    test_dir = os.path.join(output_dir, f'Test_{suffix}')
-    if not os.path.exists(test_dir):
-        os.makedirs(test_dir)
+    for test_idx, initial_state in enumerate(initial_states):
+        print(f"\n========== Test {test_idx+1}/{num_tests} ==========")
+        print(f"Initial state: q = {initial_state[0]:.4f}, v = {initial_state[1]:.4f}")
 
-    # Plot and save results
-    plot_and_save(positions, 'mpc step', 'q [rad]', 'Position', os.path.join(test_dir, f'position_plot_{suffix}.png'))
-    plot_and_save(velocities, 'mpc step', 'v [rad/s]', 'Velocity', os.path.join(test_dir, f'velocity_plot_{suffix}.png'))
-    plot_and_save(actual_inputs, 'mpc step', 'u [N/m]', 'Torque', os.path.join(test_dir, f'torque_plot_{suffix}.png'))
-    plot_and_save(total_costs, 'MPC Step', 'Total Cost', 'Total Cost', os.path.join(test_dir, f'total_cost_plot_{suffix}.png'))
-    plot_and_save(terminal_costs, 'MPC Step', 'Terminal Cost', 'Terminal Cost', os.path.join(test_dir, f'terminal_cost_plot_{suffix}.png'))
+        # Create directory for each test
+        suffix = config.nn.split('_SP_')[-1].replace('.h5', '')
+        test_dir = os.path.join(output_dir, f'Test_{suffix}_test_{test_idx+1}')
+        if not os.path.exists(test_dir):
+            os.makedirs(test_dir)
 
-    # Save data in a .csv file
-    if (config.TC):
-        mpc.save_results(positions, velocities, actual_inputs, total_costs, terminal_costs, f'Plots_&_Animations/mpc_SP_TC_{suffix}.csv')
-    else:
-        if(config.scenario_type):
-            mpc.save_results(positions, velocities, actual_inputs, total_costs, terminal_costs, f'Plots_&_Animations/mpc_SP_NTC_T_1_{suffix}.csv')
+        actual_trajectory = []      # Buffer to store actual trajectory
+        actual_inputs = []          # Buffer to store actual inputs
+        total_costs = []            # Buffer to store total costs
+        terminal_costs = []         # Buffer to store terminal costs
+
+        mpc_step = config.mpc_step          # Number of MPC steps
+        new_state_guess = np.zeros((2, mpc.N+1))
+        new_input_guess = np.zeros((mpc.N))
+
+        # First run
+        sol = mpc.solve(initial_state)
+        actual_trajectory.append(np.array([sol.value(mpc.q[0]), sol.value(mpc.v[0])]))
+        actual_inputs.append(sol.value(mpc.u[0]))
+
+        # Creation of state_guess of size 2 x N+1
+        for i in range(mpc.N):
+            new_state_guess[0, i] = sol.value(mpc.q[i+1])
+            new_state_guess[1, i] = sol.value(mpc.v[i+1])
+
+        # Creation of input_guess of size N
+        for i in range(mpc.N-1):
+            new_input_guess[i] = sol.value(mpc.u[i+1])
+
+        # Update the state and input guesses for the next MPC iteration
+        for i in range(mpc_step):
+            init_state = actual_trajectory[i]
+
+            try:
+                sol = mpc.solve(init_state, new_state_guess, new_input_guess)
+            except RuntimeError as e:
+                if "Infeasible_Problem_Detected" in str(e):
+                    print("")
+                    print("======================================")
+                    print("MPC stopped due to infeasible problem")
+                    print("======================================")
+                    print("")
+                    print(mpc.opti.debug.show_infeasibilities())
+                    break
+                else:
+                    print(e)
+            
+            actual_trajectory.append(np.array([sol.value(mpc.q[1]), sol.value(mpc.v[1])]))
+            actual_inputs.append(sol.value(mpc.u[0]))
+            total_costs.append(sol.value(mpc.cost))
+            terminal_costs.append(sol.value(mpc.terminal_cost))
+
+            # Update state_guess for the next iteration
+            for k in range(mpc.N):
+                new_state_guess[0, k] = sol.value(mpc.q[k+1])
+                new_state_guess[1, k] = sol.value(mpc.v[k+1])
+
+            # Update input_guess for the next iteration
+            for j in range(mpc.N-1):
+                new_input_guess[j] = sol.value(mpc.u[j+1])
+            print("Step", i+1, "out of", mpc_step, "done")
+        
+        # Stop timer
+        end_time = time.time()
+        
+        # Time in nice format
+        tot_time = end_time - start_time
+        hours = int(tot_time / 3600)
+        minutes = int((tot_time - 3600*hours) / 60)       
+        seconds = tot_time - hours*3600 - minutes*60
+        print("Total elapsed time: {}h {}m {:.2f}s".format(hours, minutes, seconds))
+
+        # Initialize empty lists
+        positions = []
+        velocities = []
+
+        # Extract positions and velocities from the actual trajectory
+        for i, state in enumerate(actual_trajectory):
+            positions.append(actual_trajectory[i][0])
+            velocities.append(actual_trajectory[i][1])
+
+        # Plot and save results for the current test
+        test_suffix = f'{suffix}_test_{test_idx+1}'
+
+        plot_and_save(positions, 'mpc step', 'q [rad]', f'Position Test {test_idx+1}', os.path.join(test_dir, f'position_plot_{test_suffix}.png'))
+        plot_and_save(velocities, 'mpc step', 'v [rad/s]', f'Velocity Test {test_idx+1}', os.path.join(test_dir, f'velocity_plot_{test_suffix}.png'))
+        plot_and_save(actual_inputs, 'mpc step', 'u [N/m]', f'Torque Test {test_idx+1}', os.path.join(test_dir, f'torque_plot_{test_suffix}.png'))
+        plot_and_save(total_costs, 'MPC Step', 'Total Cost', f'Total Cost Test {test_idx+1}', os.path.join(test_dir, f'total_cost_plot_{test_suffix}.png'))
+        plot_and_save(terminal_costs, 'MPC Step', 'Terminal Cost', f'Terminal Cost Test {test_idx+1}', os.path.join(test_dir, f'terminal_cost_plot_{test_suffix}.png'))
+
+        # Save data in a .csv file for the current test
+        if (config.TC):
+            mpc.save_results(positions, velocities, actual_inputs, total_costs, terminal_costs, f'{test_dir}/mpc_SP_TC_{test_suffix}.csv')
         else:
-            mpc.save_results(positions, velocities, actual_inputs, total_costs, terminal_costs, f'Plots_&_Animations/mpc_SP_NTC_T_0.01_{suffix}.csv')
+            mpc.save_results(positions, velocities, actual_inputs, total_costs, terminal_costs, f'{test_dir}/mpc_SP_NTC_{test_suffix}.csv')
