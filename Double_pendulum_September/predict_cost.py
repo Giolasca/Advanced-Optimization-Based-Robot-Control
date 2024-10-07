@@ -8,6 +8,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # 1. Load the trained neural network model
 model = tf.keras.models.load_model('nn_DP_180_180_unconstr.h5')
 
+# Print the model summary
+model.summary()
+
 # 2. Load the original dataset
 data = pd.read_csv('combined_data_180_180.csv')
 

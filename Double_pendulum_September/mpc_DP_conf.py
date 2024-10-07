@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 
 ### Horizon parameters
-TC = 1          # Terminal cost
+TC = 0          # Terminal cost
 costraint = 0   # handles constraints in the main code
 scenario_type = 1  # Introduce scenario type: 1 for T = 1, 0 for T = 0.01
 
