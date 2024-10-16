@@ -1,21 +1,24 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from nn_SP_relu import create_model_relu
+from nn_SP_tanh import create_model_tanh
 import pandas as pd
 
 ### Horizon parameters
-TC = 1          # Terminal cost
+TC = 1         # Terminal cost
+costraint = 0  # handles constraints in the main code
 
 if TC: 
-    T = 0.03     # OCP horizon 
+    T = 1    # OCP horizon 
 else:
-    T = 0.40     # OCP horizon 
+    T = 30     # OCP horizon 
 
-dt = 0.01        # OCP time step
+dt = 1        # OCP time step
 N = int(T/dt)    # Number of horizon step
 
 # Maximum number of iterations for the solver
-max_iter = 50   
+max_iter = 50
 
 ### Constaints for the pendulum ###
 q_min = 3/4*np.pi
@@ -30,45 +33,60 @@ w_q = 1e2       # Weight for position
 w_v = 1e-1      # Weight for input
 w_u = 1e-4      # Weight for velocity
 
-### Initial state
-initial_state = np.array([3/4*np.pi, 2])
-
 # Number of MPC steps to simulate
 mpc_step = 50
 
-# Model file name
-#nn = "nn_SP_135_v1.h5"
-#nn = "nn_SP_135_v2.h5"
-#nn = "nn_SP_180_v1.h5"
-#nn = "nn_SP_180_v2.h5"
-nn = "nn_SP_225_v1.h5"
-#nn = "nn_SP_225_v2.h5"
 
-# Target state 
-if nn in ["nn_SP_135_v1.h5", "nn_SP_135_v2.h5"]:
+# Model file name
+
+#--- With constraints ---#
+#nn = "NN/nn_SP_135_constr.h5"
+#nn = "NN/nn_SP_180_constr.h5"
+#nn = "NN/nn_SP_225_constr.h5"
+
+#--- Without constraints ---#
+#nn = "NN/nn_SP_135_unconstr.h5"
+#nn = "NN/nn_SP_180_unconstr.h5"
+
+#nn = "NN/nn_SP_135_unconstr_relu.h5"
+#nn = "NN/nn_SP_135_unconstr_tanh.h5"
+#nn = "NN/nn_SP_180_unconstr_relu.h5"
+#nn = "NN/nn_SP_180_unconstr_tanh.h5"
+#nn = "NN/nn_SP_225_unconstr_relu.h5"
+nn = "NN/nn_SP_225_unconstr_tanh.h5"
+
+
+# Initial and Target state 
+if nn in ["NN/nn_SP_135_constr.h5"]:
+    initial_state = np.array([5/4*np.pi, 0])
     q_target = 3/4 * np.pi
-elif nn in ["nn_SP_180_v1.h5", "nn_SP_180_v2.h5"]:
+    dataframe = pd.read_csv("Dataset/ocp_data_SP_target_135_constr.csv")
+elif nn in ["NN/nn_SP_180_constr.h5"]:
+    initial_state = np.array([3/4*np.pi, 0])
     q_target = 4/4 * np.pi
-elif nn in ["nn_SP_225_v1.h5", "nn_SP_225_v2.h5"]:
+    dataframe = pd.read_csv("Dataset/ocp_data_SP_target_180_constr.csv")
+elif nn in ["NN/nn_SP_225_constr.h5"]:
+    initial_state = np.array([3/4*np.pi, 0])
     q_target = 5/4 * np.pi
+    dataframe = pd.read_csv("Dataset/ocp_data_SP_target_225_constr.csv")
+elif nn in ["NN/nn_SP_135_unconstr_relu.h5", "NN/nn_SP_135_unconstr_tanh.h5"]:
+    initial_state = np.array([5/4*np.pi, 0])
+    q_target = 3/4 * np.pi
+    dataframe = pd.read_csv("Dataset/ocp_data_SP_target_135_unconstr.csv")
+elif nn in ["NN/nn_SP_180_unconstr_relu.h5", "NN/nn_SP_180_unconstr_tanh.h5"]:
+    initial_state = np.array([3/4*np.pi, 0])
+    q_target = 4/4 * np.pi
+    dataframe = pd.read_csv("Dataset/ocp_data_SP_target_180_unconstr.csv")
+elif nn in ["NN/nn_SP_225_unconstr_relu.h5", "NN/nn_SP_225_unconstr_tanh.h5"]:
+    initial_state = np.array([3/4*np.pi, 0])
+    q_target = 5/4 * np.pi
+    dataframe = pd.read_csv("Dataset/ocp_data_SP_target_225_unconstr.csv")
 else:
     q_target = None
     print("File name not recognized. q_target not set.")
 
-# Function to load dataframe based on the nn filename
-def load_dataframe(nn):
-    if nn in ["nn_SP_135_v1.h5", "nn_SP_135_v2.h5"]:
-        return pd.read_csv("ocp_data_SP_135.csv")
-    elif nn in ["nn_SP_180_v1.h5", "nn_SP_180_v2.h5"]:
-        return pd.read_csv("ocp_data_SP_180.csv")
-    elif nn in ["nn_SP_225_v1.h5", "nn_SP_225_v2.h5"]:
-        return pd.read_csv("ocp_data_SP_225.csv")
-    else:
-        raise ValueError("Unknown nn filename")
-
 
 # Load dataset
-dataframe = load_dataframe(nn)
 labels = dataframe['cost']
 dataset = dataframe.drop('cost', axis=1)
 train_size = 0.8

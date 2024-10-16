@@ -3,9 +3,16 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Read the CSV file
-#data = pd.read_csv('ocp_data_SP_135.csv')
-#data = pd.read_csv('ocp_data_SP_180.csv')
-data = pd.read_csv('ocp_data_SP_225.csv')
+data = pd.read_csv('Dataset/ocp_data_SP_135.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_180.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_225.csv')
+
+#data = pd.read_csv('Dataset/ocp_data_SP_target_135_constr.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_target_135_unconstr.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_target_180_constr.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_target_180_unconstr.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_target_225_constr.csv')
+#data = pd.read_csv('Dataset/ocp_data_SP_target_225_unconstr.csv')
 
 # Extract the necessary columns
 q1 = data['position']
@@ -17,7 +24,7 @@ costo = data['cost']
 fig, ax = plt.subplots(figsize=(10, 8))
 
 # Scatter plot
-scatter = ax.scatter(q1, v1, c=costo, cmap='viridis', alpha=0.6)
+scatter = ax.scatter(q1, v1, c=costo, cmap='plasma', alpha=0.6)
 
 # Color bar
 cbar = plt.colorbar(scatter, ax=ax, shrink=0.75, aspect=5)
@@ -37,7 +44,7 @@ fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
 
 # Scatter plot
-p = ax.scatter(q1, v1, costo, c=costo, cmap='viridis', alpha=0.6)
+p = ax.scatter(q1, v1, costo, c=costo, cmap='plasma', alpha=0.6)
 
 # Set axis labels
 ax.set_xlabel('position')

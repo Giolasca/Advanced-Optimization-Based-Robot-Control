@@ -17,7 +17,7 @@ class SinglePendulumOCP:
         self.weight_velocity = config.w_v       # weight on velocity    
 
     def save_results(self, state_buffer, cost_buffer):        # Save results in a csv file to create the DataSet
-        filename = 'ocp_data_SP_target_TT.csv'
+        filename = 'Dataset/ocp_data_SP_target.csv'
         positions = [state[0] for state in state_buffer]
         velocities = [state[1] for state in state_buffer]
         df = pd.DataFrame({'position': positions, 'velocity': velocities, 'cost': cost_buffer})
@@ -70,19 +70,14 @@ class SinglePendulumOCP:
         self.opti.subject_to(position[0] == initial_state[0])
         self.opti.subject_to(velocity[0] == initial_state[1])
 
-        '''
-        # Boundary constraints for position and velocity
-        for i in range(self.N + 1):
-            # Position bounds
-            self.opti.subject_to(self.opti.bounded(config.q_min, position[i], config.q_max))
-            
-            # Velocity bounds
-            self.opti.subject_to(self.opti.bounded(config.v_min, velocity[i], config.v_max))
-            
-            # Control bounds
+        
+        # State bound constraints
+        if config.costraint:
+            for i in range(self.N+1):
+                self.opti.subject_to(self.opti.bounded(config.q_min, position[i], config.q_max))
+                self.opti.subject_to(self.opti.bounded(config.v_min, velocity[i], config.v_max))
             if i < self.N:
                 self.opti.subject_to(self.opti.bounded(config.u_min, control[i], config.u_max))
-        '''
 
         # Choosing solver
         opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
