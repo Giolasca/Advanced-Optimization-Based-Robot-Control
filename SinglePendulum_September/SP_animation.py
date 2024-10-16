@@ -7,7 +7,7 @@ import pandas as pd
 
 
 # Path to the CSV file containing pendulum positions
-path = 'Plots_&_Animations/mpc_SP_NTC.csv'
+path = 'Plots_&_Animations/mpc_SP_TC.csv'
 
 # Read the CSV file and extract the 'Positions' column
 positions_df = pd.read_csv(path)
@@ -58,7 +58,7 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, len(positions), interval=50, blit=True)
 
 # Save the animation as a GIF file using Pillow
-animation_file_path = 'Plots_&_Animations/MPC_SP_NTC.gif'
+animation_file_path = 'Plots_&_Animations/MPC_SP_TC.gif'
 ani.save(animation_file_path, writer='pillow', fps=20)
 
 # Show the animation
