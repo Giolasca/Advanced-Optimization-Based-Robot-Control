@@ -4,9 +4,15 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 
 ### Horizon parameters
-TC = 0          # Terminal cost
+TC = 1          # Terminal cost
 costraint = 0   # handles constraints in the main code
 scenario_type = 1  # Introduce scenario type: 1 for T = 1, 0 for T = 0.01
+
+dt = 0.01        # OCP time step
+
+noise = 0           # Test also robusteness to external disturbances
+mean = 0.001            # Noise mean 
+std = 0.001             # Noise std
 
 # Set T based on both TC and scenario_type
 if TC:
@@ -15,13 +21,11 @@ if TC:
 else:
     if scenario_type == 1:
         T = 1   # Scenario with T = 1
-        N = 50
+        N = int(T/dt)
     else:
         T = 0.01  # Scenario with T = 0.01 
-        N = 50
+        N = int(T/dt)
 
-dt = 0.01        # OCP time step
-#N = int(T/dt)    # Number of horizon step
 
 # Maximum number of iterations for the solver
 max_iter = 50
@@ -59,7 +63,7 @@ w_v2 = 1e-1
 w_u2 = 1e-4
 
 # Number of MPC steps to simulate
-mpc_step = 50
+mpc_step = 100
 
 # Model file name
 nn = "nn_DP_180_180_unconstr.h5"

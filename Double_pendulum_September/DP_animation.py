@@ -6,11 +6,16 @@ import pandas as pd
 import mpc_DP_conf as conf
 
 # Path to the CSV file containing pendulum positions
-if conf.TC:
-    path = 'Plots_&_Animations/MPC_DoublePendulum_TC.csv'
+if conf.TC and conf.noise:
+    path = 'Plots_&_Animations/MPC_DoublePendulum_TC_noise.csv'
+    if conf.TC and (conf.noise == 0):
+        path = 'Plots_&_Animations/MPC_DoublePendulum_TC.csv'
 else:
-    path = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_1.csv'
-
+    if conf.scenario_type:
+        path = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_1.csv'
+    else:
+        path = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_0.01.csv'
+        
 # Positions from CSV file
 data = pd.read_csv(path)
 positions_q1 = data['q1'].values
@@ -70,12 +75,21 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, len(positions_q1), interval=50, blit=True)
 
 # Save the animation as a GIF file using Pillow
-if conf.TC:
-    animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_TC.gif'
+if conf.TC and conf.noise:
+    animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_TC_noise.gif'
     ani.save(animation_file_path, writer='pillow', fps=20)
+
+    if conf.TC and (conf.noise == 0):
+        animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_TC.gif'
+        ani.save(animation_file_path, writer='pillow', fps=20)
 else:
-    animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_NTC.gif'
-    ani.save(animation_file_path, writer='pillow', fps=20)
+    if conf.scenario_type:
+        animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_NTC.gif'
+        ani.save(animation_file_path, writer='pillow', fps=20)
+    else:
+        animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_0.01.gif'
+        ani.save(animation_file_path, writer='pillow', fps=20)
+
 
 # Show the animation
 plt.show()
