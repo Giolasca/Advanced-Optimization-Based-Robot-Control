@@ -6,22 +6,28 @@ import pandas as pd
 ### Horizon parameters
 TC = 0          # Terminal cost
 costraint = 0   # handles constraints in the main code
-scenario_type = 0  # Introduce scenario type: 1 for T = 1, 0 for T = 0.01
+scenario_type = 1  # Introduce scenario type: 1 for T = 1, 0 for T = 0.01
+
+noise = 0           # Test also robusteness to external disturbances
+mean = 0.001            # Noise mean 
+std = 0.001             # Noise std
+
+dt = 0.01
 
 # Set T based on both TC and scenario_type
 if TC:
     T = 0.01  # If terminal cost, T is fixed at 0.01
-    N = 5
-else:
-    if scenario_type == 1:
-        T = 1   # Scenario with T = 1
-        N = 50
-    else:
-        T = 0.01  # Scenario with T = 0.01 
-        N = 50
+    N = int(T/dt)
 
-dt = 0.01        # OCP time step
-#N = int(T/dt)    # Number of horizon step
+if (TC == 0 and scenario_type == 1):
+    T = 1   # Scenario with T = 1
+    N = int(T/dt)
+
+if (TC == 0 and scenario_type == 0):
+    T = 0.01  # Scenario with T = 0.01 
+    N = int(T/dt)
+
+# dt = 0.01        # OCP time step
 
 # Maximum number of iterations for the solver
 max_iter = 50
@@ -47,7 +53,7 @@ mpc_step = 50
 # Model file name
 #nn = "nn_SP_135_unconstr.h5"
 #nn = "nn_SP_180_unconstr.h5"
-nn = "nn_SP_225_unconstr.h5"
+nn = "nn_SP_225_unconstr_tanh.h5"
 
 # Initial and Target state 
 if nn == "nn_SP_135_unconstr.h5":
@@ -56,7 +62,7 @@ if nn == "nn_SP_135_unconstr.h5":
 elif nn == "nn_SP_180_unconstr.h5":
     initial_state = np.array([3/4*np.pi, 0])
     q_target = 4/4 * np.pi
-elif nn == "nn_SP_225_unconstr.h5":
+elif nn == "nn_SP_225_unconstr_tanh.h5":
     initial_state = np.array([3/4*np.pi, 0])
     q_target = 5/4 * np.pi
 else:
@@ -69,7 +75,7 @@ def load_dataframe(nn):
         return pd.read_csv("ocp_data_SP_target_135_constr.csv")
     elif nn == "nn_SP_180_unconstr.h5":
         return pd.read_csv("ocp_data_SP_target_180_unconstr.csv")
-    elif nn == "nn_SP_225_unconstr.h5":
+    elif nn == "nn_SP_225_unconstr_tanh.h5":
         return pd.read_csv("ocp_data_SP_target_225_unconstr.csv")
     else:
         raise ValueError("Unknown nn filename")

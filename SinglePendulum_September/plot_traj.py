@@ -1,72 +1,102 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 import numpy as np
 
-def load_trajectory_from_csv(filename):
-    """
-    Load trajectory (position, velocity, and input) from a CSV file.
-    """
-    return pd.read_csv(filename)
+# List of CSV files for the 15 tests
+csv_files = [
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_1/mpc_SP_TC_225_unconstr_tanh_test_1.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_2/mpc_SP_TC_225_unconstr_tanh_test_2.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_3/mpc_SP_TC_225_unconstr_tanh_test_3.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_4/mpc_SP_TC_225_unconstr_tanh_test_4.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_5/mpc_SP_TC_225_unconstr_tanh_test_5.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_6/mpc_SP_TC_225_unconstr_tanh_test_6.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_7/mpc_SP_TC_225_unconstr_tanh_test_7.csv',
+    'Plots_&_Animations/Test_225_unconstr_tanh_test_8/mpc_SP_TC_225_unconstr_tanh_test_8.csv'
 
-def plot_trajectories_with_reference(file1, file2, file3, reference_position, reference_velocity, reference_input):
-    """
-    Load trajectories from two CSV files and plot them on a single graph along with reference values.
-    """
-    # Load data from CSV
-    traj1 = load_trajectory_from_csv(file1)
-    traj2 = load_trajectory_from_csv(file2)
-    traj3 = load_trajectory_from_csv(file3)
-    
-    fig, axs = plt.subplots(3, 1, figsize=(10, 8))
-    
-    # Position plot
-    axs[0].plot(traj1['Positions'], label="Trajectory with terminal cost (N=5) and T = 0.01", color='b', linestyle='-')  # Solid line
-    axs[0].plot(traj2['Positions'], label="Trajectory without terminal cost (N=50) and T = 1", color='r', linestyle=':')  # Dotted line
-    axs[0].plot(traj3['Positions'], label="Trajectory without terminal cost (N=50) and T = 0.01", color='m', linestyle='-.')  # Dash-dot line
-    axs[0].plot(reference_position, label="Reference", color='g', linestyle='--')  # Dashed line for the reference
-    axs[0].set_title('Position Comparison')
-    axs[0].set_ylabel('Position')
-    axs[0].legend(loc='best')
-    axs[0].grid(True)
-    
-    # Velocity plot
-    axs[1].plot(traj1['Velocities'], label="Trajectory with terminal cost (N=5) and T = 0.01", color='b', linestyle='-')  # Solid line
-    axs[1].plot(traj2['Velocities'], label="Trajectory without terminal cost (N=50) and T = 1", color='r', linestyle=':')  # Dotted line
-    axs[1].plot(traj3['Velocities'], label="Trajectory without terminal cost (N=50) and T = 0.01", color='m', linestyle='-.')  # Dash-dot line
-    axs[1].plot(reference_velocity, label="Reference", color='g', linestyle='--')  # Dashed line for the reference
-    axs[1].set_title('Velocity Comparison')
-    axs[1].set_ylabel('Velocity')
-    axs[1].legend(loc='best')
-    axs[1].grid(True)
-    
-    # Input plot
-    axs[2].plot(traj1['Inputs'], label="Trajectory with terminal cost (N=5) and T = 0.01", color='b', linestyle='-')  # Solid line
-    axs[2].plot(traj2['Inputs'], label="Trajectory without terminal cost (N=50) and T = 1", color='r', linestyle=':')  # Dotted line
-    axs[2].plot(traj3['Inputs'], label="Trajectory without terminal cost (N=50) and T = 0.01", color='m', linestyle='-.')  # Dash-dot line
-    axs[2].set_title('Input Comparison')
-    axs[2].set_ylabel('Input')
-    axs[2].set_xlabel('Time Steps')
-    axs[2].legend(loc='best')
-    axs[2].grid(True)
+]
 
-    plt.tight_layout()
-    
-    plt.show()
+# Add the folder containing the full MPC problem CSV files
+full_mpc_files = [
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_1/mpc_SP_NTC_T_1_225_unconstr_tanh_test_1.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_2/mpc_SP_NTC_T_1_225_unconstr_tanh_test_2.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_3/mpc_SP_NTC_T_1_225_unconstr_tanh_test_3.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_4/mpc_SP_NTC_T_1_225_unconstr_tanh_test_4.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_5/mpc_SP_NTC_T_1_225_unconstr_tanh_test_5.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_6/mpc_SP_NTC_T_1_225_unconstr_tanh_test_6.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_7/mpc_SP_NTC_T_1_225_unconstr_tanh_test_7.csv',
+    'Plots_&_Animations_NTC/Test_225_unconstr_tanh_test_8/mpc_SP_NTC_T_1_225_unconstr_tanh_test_8.csv'
 
-if __name__ == "__main__":
-    # Read files .csv
-    csv_file1 = 'Plots_&_Animations/mpc_SP_NTC_225_unconstr.csv'
-    csv_file2 = 'Plots_&_Animations/mpc_SP_TC_225_unconstr.csv'
-    csv_file3 = 'Plots_&_Animations/mpc_SP_NTC_T_0.01_225_unconstr.csv'
-    
-    # Reference definitions
-    reference_value = (5/4) * np.pi  # Reference constant for position
-    time_steps = 50  # Number of time steps
-    
-    reference_position = [reference_value] * time_steps  # Constant reference position
-    reference_velocity = [0] * time_steps  # Constant reference velocity
-    reference_input = [0] * time_steps     # Constant control input
-    
-    # Execute the plot with references
-    plot_trajectories_with_reference(csv_file1, csv_file2, csv_file3, reference_position, reference_velocity, reference_input)
+]
+# Define the target state (example values, replace with actual target values)
+target_position = 5/4*np.pi  # Target position in radians
+target_velocity = 0  # Target velocity in m/s
 
+# Initialize the plot
+plt.figure(figsize=(10, 8))
+plt.title("System Trajectories")
+plt.xlabel(r"Position [rad]")
+plt.ylabel(r"Velocity $[m/s]$")
+
+# Set a consistent color for the test trajectories
+test_color = 'blue'
+
+# Plot the test trajectories
+for i, file in enumerate(csv_files):
+    if not os.path.exists(file):
+        print(f"File {file} not found.")
+        continue
+
+    # Load the data
+    data = pd.read_csv(file)
+    
+    # Assuming columns named 'Positions' and 'Velocities' in each CSV file
+    positions = data['Positions'].to_numpy()
+    velocities = data['Velocities'].to_numpy()
+
+    # Plot the trajectory for this test
+    plt.plot(positions, velocities, color=test_color)
+
+    # Mark the initial state with a distinct marker
+    initial_velocity = velocities[0]
+    initial_position = positions[0]
+
+    # Mark the initial state with a distinct marker
+    plt.plot(initial_position, initial_velocity, marker='o', markersize=8, 
+             markeredgecolor='black', markerfacecolor='yellow')
+    
+    # Create the text annotation for the initial state with LaTeX formatting
+    initial_state_text = f'Sim-{i+1}\n $x_0 = [{initial_position:.2f}; {initial_velocity:.2f}]$'
+    plt.text(initial_position, initial_velocity, initial_state_text, fontsize=10, color='black')
+
+# Add a single label for LTC-MPC trajectories
+plt.plot([], [], color=test_color, label='LTC-MPC')  # Placeholder for legend
+
+# Plot the full MPC trajectories
+full_mpc_color = 'red'  # Choose a contrasting color (e.g., green)
+for file in full_mpc_files:
+    if not os.path.exists(file):
+        print(f"File {file} not found.")
+        continue
+
+    # Load the data
+    data = pd.read_csv(file)
+    
+    # Assuming columns named 'Positions' and 'Velocities' in each CSV file
+    positions = data['Positions'].to_numpy()
+    velocities = data['Velocities'].to_numpy()
+
+    # Plot the full MPC trajectory with a solid line
+    plt.plot(positions, velocities, color=full_mpc_color)
+
+# Add a label for Full MPC trajectories
+plt.plot([], [], color=full_mpc_color, label='Full MPC')  # Placeholder for legend
+
+# Highlight the target state with a distinct marker
+plt.plot(target_position, target_velocity, marker='X', markersize=10, 
+         markeredgecolor='black', markerfacecolor='red', label='Target State')
+
+# Display legend and grid
+plt.legend(loc="best")
+plt.grid(True)
+plt.show()

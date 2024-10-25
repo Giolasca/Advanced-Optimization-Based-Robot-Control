@@ -4,10 +4,18 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 import pandas as pd
-
+import mpc_SP_conf as config
 
 # Path to the CSV file containing pendulum positions
-path = 'Plots_&_Animations/mpc_SP_TC.csv'
+if config.TC and config.noise:
+    path = 'Plots_&_Animations/mpc_SP_TC_225_unconstr_tanh_noise.csv'
+    if config.TC and not config.noise:
+        path = 'Plots_&_Animations/mpc_SP_TC_225_unconstr_tanh.csv'
+else:
+    if config.scenario_type:
+        path = 'Plots_&_Animations/mpc_SP_NTC_225_unconstr_tanh.csv'
+    else:
+        path = 'Plots_&_Animations/mpc_SP_NTC_T_0.01_225_unconstr_tanh.csv'
 
 # Read the CSV file and extract the 'Positions' column
 positions_df = pd.read_csv(path)

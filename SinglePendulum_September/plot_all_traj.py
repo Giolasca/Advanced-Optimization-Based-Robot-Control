@@ -15,11 +15,13 @@ def plot_all_trajectories(output_dir, num_tests):
     all_positions = []
     all_velocities = []
     all_inputs = []
+    all_terminal_costs = []
+    all_total_costs = []
 
     # Loop sui file generati per ciascun test
     for test_idx in range(1, num_tests + 1):
         # Trova la directory di ogni test
-        test_dir = os.path.join(output_dir, f'Test_225_unconstr_test_{test_idx}')
+        test_dir = os.path.join(output_dir, f'Test_225_unconstr_tanh_test_{test_idx}')
         
         # Cerca il file csv per il test corrente
         test_files = [f for f in os.listdir(test_dir) if f.endswith('.csv')]
@@ -37,11 +39,15 @@ def plot_all_trajectories(output_dir, num_tests):
         positions = df['Positions'].values
         velocities = df['Velocities'].values
         inputs = df['Inputs'].values
+        terminal_cost = df['Terminal_Costs'].values
+        total_cost = df['Total_Costs'].values
 
         # Aggiunge la traiettoria alle liste
         all_positions.append(positions)
         all_velocities.append(velocities)
         all_inputs.append(inputs)
+        all_terminal_costs.append(terminal_cost)
+        all_total_costs.append(total_cost)
 
     # Crea i grafici con le traiettorie combinate
     plt.figure(figsize=(10, 8))
@@ -64,7 +70,7 @@ def plot_all_trajectories(output_dir, num_tests):
     plt.title('Velocities Over All Tests')
     plt.grid(True)
 
-    # Plot delle velocità (sottografico 2)
+    # Plot delle torque (sottografico 3)
     plt.subplot(3, 1, 3)
     for idx, inputs in enumerate(all_inputs):
         plt.plot(inputs)
@@ -76,7 +82,31 @@ def plot_all_trajectories(output_dir, num_tests):
     plt.tight_layout()
     plt.show()
 
+    # Now plot the terminal and total costs
+    plt.figure(figsize=(10, 6))
+
+    # Plot terminal costs
+    plt.subplot(2, 1, 1)
+    for idx, terminal_cost in enumerate(all_terminal_costs):
+        plt.plot(terminal_cost, label=f'Test {idx+1}')
+    plt.xlabel('MPC Step')
+    plt.ylabel('Terminal Cost')
+    plt.title('Terminal Cost Over All Tests')
+    plt.grid(True)
+    
+    # Plot total costs
+    plt.subplot(2, 1, 2)
+    for idx, total_cost in enumerate(all_total_costs):
+        plt.plot(total_cost, label=f'Test {idx+1}')
+    plt.xlabel('MPC Step')
+    plt.ylabel('Total Cost')
+    plt.title('Total Cost Over All Tests')
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
 # Esempio di utilizzo:
 output_dir = 'Plots_&_Animations'  # Cartella dove sono salvati i risultati
-num_tests = 20  # Numero totale di test eseguiti
+num_tests = 50  # Numero totale di test eseguiti
 plot_all_trajectories(output_dir, num_tests)

@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 
 def create_model(input_shape):
     inputs = layers.Input(shape=(input_shape,))
-    out1 = layers.Dense(64, activation='relu')(inputs)
-    out2 = layers.Dense(32, activation='relu')(out1)
-    out3 = layers.Dense(16, activation='relu')(out2)
+    out1 = layers.Dense(64, activation = 'tanh')(inputs)
+    out2 = layers.Dense(32, activation = 'tanh')(out1)
+    out3 = layers.Dense(16, activation = 'tanh')(out2)
     outputs = layers.Dense(1)(out3)
 
     model = tf.keras.Model(inputs, outputs)
@@ -20,7 +20,7 @@ def create_model(input_shape):
 
 if __name__ == "__main__":
     # Load the CSV dataset
-    data = pd.read_csv('ocp_data_SP_target_225_unconstr.csv')
+    data = pd.read_csv('ocp_data_SP_target_225_constr.csv')
 
     # Extract features (initial state) and target (cost)
     X = data[['position', 'velocity']].values
@@ -37,15 +37,15 @@ if __name__ == "__main__":
     # Create the model using the create_model function
     model = create_model(input_shape=X_train_scaled.shape[1])
 
-    # Set a learning rate
+    # Set a specific learning rate
     learning_rate = 0.0005
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    # Compile the model
-    model.compile(optimizer = optimizer, loss='mean_squared_error')
+    # Compile the model with the specified learning rate
+    model.compile(optimizer=optimizer, loss='mean_squared_error')
 
     # Train the model
-    model.fit(X_train_scaled, y_train, epochs=300, validation_data=(X_test_scaled, y_test))
+    model.fit(X_train_scaled, y_train, epochs=600, validation_data=(X_test_scaled, y_test))
 
     # Evaluate the model on the test set
     y_pred = model.predict(X_test_scaled)
@@ -59,11 +59,11 @@ if __name__ == "__main__":
     plt.ylabel('Predictions')
     plt.title('True Values vs. Predictions on Test Set')
     plt.legend()
-    plt.grid(True)  # Add grid
+    plt.grid(True)
     plt.show()
 
     # Save the trained model
-    model.save('nn_SP_225_unconstr.h5')
+    model.save('nn_SP_225_constr_tanh.h5')
 
     # Create grid
     q1_vals = np.linspace(3/4*np.pi, 5/4*np.pi, 121)
