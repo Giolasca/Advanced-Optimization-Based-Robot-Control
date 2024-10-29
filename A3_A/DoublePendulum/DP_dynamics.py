@@ -28,5 +28,5 @@ def f(x, u):
             ) / l2**2 / l1 / m2 / (m2 * cos(-2 * q2 + 2 * q1) - 2 * m1 - m2)
     
     x_next = x + dt*np.array([dq1, ddq1, dq2, ddq2])
-    
+
     return x_next

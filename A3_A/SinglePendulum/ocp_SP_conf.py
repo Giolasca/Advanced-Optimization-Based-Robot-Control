@@ -24,6 +24,8 @@ w_q = 1e2
 w_v = 1e-1
 w_u = 1e-4
 
+### Target state
+q_target = 5/4 * np.pi
 
 # Function to create states array in a grid
 def grid_states(n_pos, n_vel):

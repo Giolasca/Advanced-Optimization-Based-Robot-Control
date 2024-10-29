@@ -10,28 +10,36 @@ grid = 1
 T = 1.0          # OCP horizon size
 dt = 0.01        # OCP time step
 N = int(T/dt);   # Number of horizon step
-max_iter = 100
+max_iter = 100   # Maximum iteration per point
+
 
 ### Constaints for the first link###
 q1_min = 3/4*np.pi
 q1_max = 5/4*np.pi
 v1_min = -10
 v1_max = 10
+
+'''
 u1_min = -9.81
 u1_max = 9.81
+'''
 
 ### WWeights for the first link ###
 w_q1 = 1e2
 w_v1 = 1e-1
 w_u1 = 1e-4
 
+
 ### Constaints for the second link ###
 q2_min = 3/4*np.pi
 q2_max = 5/4*np.pi
 v2_min = -10
 v2_max = 10
+
+'''
 u2_min = -9.81
 u2_max = 9.81
+'''
 
 ### Weights for the second link###
 w_q2 = 1e2
@@ -39,9 +47,12 @@ w_v2 = 1e-1
 w_u2 = 1e-4
 
 ### To spit the state_array
-start_index = 21*21*21*0
-end_index = 21*21*21*21    # 3 - 6 - 9  ... 15 - 18 - 21
+start_index = 21*21*21*4   
+end_index = 21*21*21*7    
 tot_points = 21*21*21*21
+
+q1_target = np.pi
+q2_target = np.pi
 
 # Function to create states array in a grid
 def grid_states(n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2):

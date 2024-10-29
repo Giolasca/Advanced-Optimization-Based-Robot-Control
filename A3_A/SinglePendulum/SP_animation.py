@@ -4,17 +4,37 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 import pandas as pd
+import mpc_SP_conf as config
 
+'''
 # Path to the CSV file containing pendulum positions
-path = '/home/student/shared/orc/A3_A/SinglePendulum/Plots_&_Animations/SinglePendulum.csv'
+if config.TC and config.noise:
+    path = 'Plots_&_Animations/mpc_SP_TC_225_unconstr_tanh_noise.csv'
+    if config.TC and not config.noise:
+        path = 'Plots_&_Animations/mpc_SP_TC_225_unconstr_tanh.csv'
+else:
+    if config.scenario_type:
+        path = 'Plots_&_Animations/mpc_SP_NTC_225_unconstr_tanh.csv'
+    else:
+        path = 'Plots_&_Animations/mpc_SP_NTC_T_0.01_225_unconstr_tanh.csv'
+'''
 
-# Positions from CSV file and flatten the array
-positions = np.array(pd.read_csv(path).values.tolist()).flatten()
+test_number = 9  
+
+tc_path = f'Plots_&_Animations/Test_225_unconstr_tanh_test_{test_number}/mpc_SP_TC_225_unconstr_tanh_test_{test_number}.csv'
+ntc_path = f'Plots_&_Animations/Test_225_unconstr_tanh_test_{test_number}/mpc_SP_NTC_225_unconstr_tanh_test_{test_number}.csv'
+
+path = tc_path
+
+
+# Read the CSV file and extract the 'Positions' column
+positions_df = pd.read_csv(path)
+positions = positions_df['Positions'].values.flatten()
 
 # Figure and axis for plotting
 fig, ax = plt.subplots(figsize=(12, 8))
 ax.set_aspect('equal')  
-ax.grid()  
+ax.grid()
 
 # Initialize plot elements: line for pendulum and trace for the path
 line, = ax.plot([], [], 'o-', lw=4)  
@@ -56,7 +76,7 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, len(positions), interval=50, blit=True)
 
 # Save the animation as a GIF file using Pillow
-animation_file_path = '/home/student/shared/orc/A3_A/SinglePendulum/Plots_&_Animations/SinglePendulum.gif'
+animation_file_path = 'Plots_&_Animations/MPC_SP_TC.gif'
 ani.save(animation_file_path, writer='pillow', fps=20)
 
 # Show the animation

@@ -3,15 +3,18 @@ import mpc_DP_conf as conf
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
+import mpc_DP_conf as conf
 
-# File path of the data
 # Path to the CSV file containing pendulum positions
-path = '/home/student/orc/RL/A3/A3_new/DoublePendulum/DoublePendulum.csv'
+if conf.TC:
+    path = 'Plots_&_Animations/Test_180_180_unconstr_test_1/mpc_DP_TC_180_180_unconstr_test_1.csv'
+else:
+    path = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_1.csv'
 
 # Positions from CSV file
 data = pd.read_csv(path)
-positions_q1 = data['Positions_q1'].values
-positions_q2 = data['Positions_q2'].values
+positions_q1 = data['q1'].values
+positions_q2 = data['q2'].values
 
 # Figure and axis for plotting
 fig, ax = plt.subplots(figsize=(12, 8))
@@ -67,8 +70,12 @@ def animate(i):
 ani = animation.FuncAnimation(fig, animate, len(positions_q1), interval=50, blit=True)
 
 # Save the animation as a GIF file using Pillow
-animation_file_path = 'DoublePendulum1.gif'
-ani.save(animation_file_path, writer='pillow', fps=20)
+if conf.TC:
+    animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_TC.gif'
+    ani.save(animation_file_path, writer='pillow', fps=20)
+else:
+    animation_file_path = 'Plots_&_Animations/MPC_DoublePendulum_NTC.gif'
+    ani.save(animation_file_path, writer='pillow', fps=20)
 
 # Show the animation
 plt.show()

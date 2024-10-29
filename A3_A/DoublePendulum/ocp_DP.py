@@ -1,154 +1,205 @@
 import numpy as np
 import casadi
-import DP_dynamics
+import DP_dynamics as DP_dynamics
+import ocp_DP_conf as config
 import multiprocessing
-import ocp_DP_conf as conf
+import matplotlib.pyplot as plt
 import pandas as pd
-import os
 import time
 
-# Class defining the optimal control problem for a double pendulum
-class OcpDoublePendulum:
+
+class SinglePendulumOCP:
+
     def __init__(self):
-        # Load configuration parameters
-        self.T = conf.T
-        self.dt = conf.dt
-        self.w_q1 = conf.w_q1
-        self.w_u1 = conf.w_u1
-        self.w_v1 = conf.w_v1
-        self.w_q2 = conf.w_q2
-        self.w_u2 = conf.w_u2
-        self.w_v2 = conf.w_v2
+        self.N = config.N                       # OCP horizon
+        self.w_q1 = config.w_q1                 # weight on first link position
+        self.w_u1 = config.w_u1                 # weight on first link control
+        self.w_v1 = config.w_v1                 # weight on first link velocity  
 
-    # Initialize variables for the optimization problem
-    def initialize_variables(self, X_guess, U_guess, x_init):
-        self.q1 = self.opti.variable(self.N + 1)
-        self.v1 = self.opti.variable(self.N + 1)
-        self.u1 = self.opti.variable(self.N)
-        self.q2 = self.opti.variable(self.N + 1)
-        self.v2 = self.opti.variable(self.N + 1)
-        self.u2 = self.opti.variable(self.N)
+        self.w_q2 = config.w_q2                 # weight on second link position
+        self.w_u2 = config.w_u2                 # weight on second link control
+        self.w_v2 = config.w_v2                 # weight on second link velocity  
 
-        q1, v1, q2, v2 = self.q1, self.v1, self.q2, self.v2
+    def save_results(self, state_buffer, cost_buffer):        # Save results in a csv file to create the DataSet
+        filename = 'ocp_data_DP_target_180_180_run_4_unconstr.csv'
+        positions_q1 = [state[0] for state in state_buffer]
+        velocities_v1 = [state[1] for state in state_buffer]
+        positions_q2 = [state[2] for state in state_buffer]
+        velocities_v2 = [state[3] for state in state_buffer]
+        df = pd.DataFrame({'q1': positions_q1, 'v1': velocities_v1, 'q2': positions_q2, 'v2': velocities_v2, 'cost': cost_buffer})
+        df.to_csv(filename, index=False)
 
-        # Set initial guesses for state variables
-        for i in range(self.N + 1):
-            self.opti.set_initial(q1[i], X_guess[0, i] if X_guess is not None else x_init[0])
-            self.opti.set_initial(v1[i], X_guess[1, i] if X_guess is not None else x_init[1])
-            self.opti.set_initial(q2[i], X_guess[2, i] if X_guess is not None else x_init[2])
-            self.opti.set_initial(v2[i], X_guess[3, i] if X_guess is not None else x_init[3])
-
-        # Set initial guesses for control variables
-        if U_guess is not None:
-            for i in range(self.N):
-                self.opti.set_initial(self.u1[i], U_guess[0, i])
-                self.opti.set_initial(self.u2[i], U_guess[1, i])
-
-    # Set up the optimization problem with constraints and cost function
-    def setup_optimization_problem(self, x_init):
-        self.cost = 0
-        # Define the cost function
-        for i in range(self.N + 1):
-            self.cost += self.w_v1 * self.v1[i]**2 + self.w_v2 * self.v2[i]**2
-            if i < self.N:
-                self.cost += self.w_u1 * self.u1[i]**2 + self.w_u2 * self.u2[i]**2
-        self.opti.minimize(self.cost)
-
-        # Define the dynamic constraints using the system dynamics
-        for i in range(self.N):
-            x_next = DP_dynamics.f(np.array([self.q1[i], self.v1[i], self.q2[i], self.v2[i]]), np.array([self.u1[i], self.u2[i]]))
-            self.opti.subject_to(self.q1[i + 1] == x_next[0])
-            self.opti.subject_to(self.v1[i + 1] == x_next[1])
-            self.opti.subject_to(self.q2[i + 1] == x_next[2])
-            self.opti.subject_to(self.v2[i + 1] == x_next[3])
-
-        # Define the initial conditions
-        self.opti.subject_to(self.q1[0] == x_init[0])
-        self.opti.subject_to(self.v1[0] == x_init[1])
-        self.opti.subject_to(self.q2[0] == x_init[2])
-        self.opti.subject_to(self.v2[0] == x_init[3])
-
-        # Define the bounds on state and control variables
-        '''
-        for i in range(self.N + 1):
-            self.opti.subject_to(self.opti.bounded(conf.q1_min, self.q1[i], conf.q1_max))
-            self.opti.subject_to(self.opti.bounded(conf.q2_min, self.q2[i], conf.q2_max))
-            self.opti.subject_to(self.opti.bounded(conf.v1_min, self.v1[i], conf.v1_max))
-            self.opti.subject_to(self.opti.bounded(conf.v2_min, self.v2[i], conf.v2_max))
-        
-        for i in range(self.N):
-            self.opti.subject_to(self.opti.bounded(conf.u1_min, self.u1[i], conf.u1_max))
-            self.opti.subject_to(self.opti.bounded(conf.u2_min, self.u2[i], conf.u2_max))
-        '''
-        # Solver options for IPOPT
-        opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-        s_opts = {"max_iter": int(conf.max_iter)}
-        self.opti.solver("ipopt", opts, s_opts)
-
-    # Solve the optimization problem
-    def solve(self, x_init, X_guess=None, U_guess=None):
-        self.N = int(self.T / self.dt)
+    def solve_ocp(self, initial_state, state_guess=None, control_guess=None):
         self.opti = casadi.Opti()
         
-        self.initialize_variables(X_guess, U_guess, x_init)
-        self.setup_optimization_problem(x_init)
+        # Declaration of the variables in casaDi types
+        q1 = self.opti.variable(self.N + 1)
+        v1 = self.opti.variable(self.N + 1)
+        u1 = self.opti.variable(self.N)
+
+        q2 = self.opti.variable(self.N + 1)
+        v2 = self.opti.variable(self.N + 1)
+        u2 = self.opti.variable(self.N)
         
+        # Target position
+        q1_des = config.q1_target
+        q2_des = config.q2_target
+
+        # State Vector initialization
+        if state_guess is not None:
+            for i in range(self.N + 1):
+                self.opti.set_initial(q1[i], state_guess[0, i])
+                self.opti.set_initial(v1[i], state_guess[1, i])
+                self.opti.set_initial(q2[i], state_guess[2, i])
+                self.opti.set_initial(v2[i], state_guess[3, i])
+        else:
+            for i in range(self.N + 1):
+                self.opti.set_initial(q1[i], initial_state[0])
+                self.opti.set_initial(v1[i], initial_state[1])
+                self.opti.set_initial(q2[i], initial_state[2])
+                self.opti.set_initial(v2[i], initial_state[3])
+
+        # Control input initialization
+        if control_guess is not None:
+            for i in range(self.N):
+                self.opti.set_initial(u1[i], control_guess[0, i])
+                self.opti.set_initial(u2[i], control_guess[1, i])
+
+        # Cost functional
+        self.total_cost = 0
+        self.running_cost = [None,]*(self.N+1)
+        for i in range(self.N + 1):
+            self.running_cost[i] = self.w_v1 * v1[i]**2 + self.w_v2 * v2[i]**2
+            self.running_cost[i] += self.w_q1 * (q1[i] - q1_des)**2 + self.w_q2 * (q2[i] - q2_des)**2
+            if (i<self.N):
+                self.running_cost[i] += self.w_u1 * u1[i]**2 + self.w_u2 * u2[i]**2
+            self.total_cost += self.running_cost[i]
+        self.opti.minimize(self.total_cost)
+
+        # Dynamic constraint
+        for i in range(self.N):
+            next_state = DP_dynamics.f(np.array([q1[i], v1[i], q2[i], v2[i]]), np.array([u1[i],u2[i]]))
+            self.opti.subject_to(q1[i + 1] == next_state[0])
+            self.opti.subject_to(v1[i + 1] == next_state[1])
+            self.opti.subject_to(q2[i + 1] == next_state[2])
+            self.opti.subject_to(v2[i + 1] == next_state[3])
+
+        # Initial state constraint
+        self.opti.subject_to(q1[0] == initial_state[0])
+        self.opti.subject_to(v1[0] == initial_state[1])
+        self.opti.subject_to(q2[0] == initial_state[2])
+        self.opti.subject_to(v2[0] == initial_state[3])
+
+        '''
+        # Boundary constraints for position and velocity
+        for i in range(self.N + 1):
+            # Position bounds
+            self.opti.subject_to(self.opti.bounded(config.q_min, position[i], config.q_max))
+            
+            # Velocity bounds
+            self.opti.subject_to(self.opti.bounded(config.v_min, velocity[i], config.v_max))
+            
+            # Control bounds
+            if i < self.N:
+                self.opti.subject_to(self.opti.bounded(config.u_min, control[i], config.u_max))
+        '''
+        # Choosing solver
+        opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
+        s_opst = {"max_iter": int(config.max_iter)}
+        self.opti.solver("ipopt", opts, s_opst)
+
         return self.opti.solve()
 
-# Generate the state array based on the grid or random configuration
-def generate_state_array():
-    if conf.grid == 1:
-        n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2 = 21, 21, 21, 21
-        return conf.grid_states(n_pos_q1, n_vel_v1, n_pos_q2, n_vel_v2)
-    else:
-        num_pairs = 10
-        return conf.random_states(num_pairs)
-
-# Function to execute the optimal control problem in parallel
-def ocp_function_double_pendulum(index, state_array, ocp):
-    states, costs = [], []
-    for i in range(index[0], index[1]):
-        x = state_array[i, :]
+def ocp_task(index_range, ocp_solver, initial_states):
+    state_buffer = []       # Buffer to store initial states
+    cost_buffer = []        # Buffer to store optimal costs
+    
+    # Divide the states grid in complementary subsets
+    for i in range(index_range[0], index_range[1]):
+        initial_state = initial_states[i, :]
         try:
-            sol = ocp.solve(x)
-            costs.append(sol.value(ocp.cost))
-            print("State: [{:.4f}  {:.4f}   {:.4f}   {:.4f}] Cost {:.4f}".format(*x, costs[-1]))
-            states.append([x[0], x[1], x[2], x[3], costs[-1]])
+            solution = ocp_solver.solve_ocp(initial_state)
+            state_buffer.append([initial_state[0], initial_state[1], initial_state[2], initial_state[3]])
+            cost_buffer.append(solution.value(ocp_solver.total_cost))
+            print(f"Initial State: [{initial_state[0]:.3f}  {initial_state[1]:.3f} {initial_state[2]:.3f}  {initial_state[3]:.3f}] Cost: {cost_buffer[-1]:.3f}")
         except RuntimeError as e:
             if "Infeasible_Problem_Detected" in str(e):
-                print("Could not solve for: [{:.4f}   {:.4f}   {:.4f}   {:.4f}]".format(*x))
+                print(f"Could not solve for: [{initial_state[0]:.3f}  {initial_state[1]:.3f} {initial_state[2]:.3f}  {initial_state[3]:.3f}]")
             else:
                 print("Runtime error:", e)
-    return states
+    return state_buffer, cost_buffer
+
 
 if __name__ == "__main__":
-    # Initialize the optimal control problem
-    ocp = OcpDoublePendulum()
-    state_array = generate_state_array()
+    # Instance of OCP solver
+    ocp_solver = SinglePendulumOCP()
 
-    # Function to manage parallel execution
-    def parallel_ocp_execution():
-        indexes = np.linspace(0, state_array.shape[0], num=conf.num_processes + 1)
-        args = [[int(indexes[i]), int(indexes[i + 1])] for i in range(conf.num_processes)]
+    if config.grid == 1:
+        num_q1 = 21
+        num_v1 = 21
+        num_q2 = 21
+        num_v2 = 21
+        total_initial_conditions = num_q1 * num_v1 * num_q2 * num_v2
+        initial_states = config.grid_states(num_q1, num_v1, num_q2, num_v2)
+    else:
+        num_random = 100
+        initial_states = config.random_states(num_random)
+
+    # Multi process execution
+    if config.multiproc == 1:
+        print("Multiprocessing execution started, number of processes:", config.num_processes)
+        print("Total points: {}  Calculated points: {}".format(config.tot_points, config.end_index))
+
+        # Subdivide the states grid in equal spaces proportional to the number of processes
+        indexes = np.linspace(0, initial_states.shape[0], num=config.num_processes + 1)
+        args = [[int(indexes[i]), int(indexes[i + 1])] for i in range(config.num_processes)]
+        pool = multiprocessing.Pool(processes=config.num_processes)
         
-        with multiprocessing.Pool(processes=conf.num_processes) as pool:
-            start = time.time()
-            results = pool.starmap(ocp_function_double_pendulum, [(arg, state_array, ocp) for arg in args])
-            end = time.time()
+        # Start execution time
+        start_time = time.time()    
         
-        return results, end - start
+        # Multiprocess start
+        results = pool.starmap(ocp_task, [(args, ocp_solver, initial_states) for args in args])
+        
+        # Multiprocess end
+        pool.close()
+        pool.join()
 
-    # Start the multiprocessing execution
-    print("Multiprocessing execution started, number of processes:", conf.num_processes)
-    print("Total points: {}  Calculated points: {}".format(conf.tot_points, conf.end_index))
-    results, tot_time = parallel_ocp_execution()
+        # End execution time
+        end_time = time.time()
 
-    # Calculate and print total elapsed time
-    hours, rem = divmod(tot_time, 3600)
-    minutes, seconds = divmod(rem, 60)
-    print(f"Total elapsed time: {int(hours)}h {int(minutes)}min {seconds:.2f}s")
+        # Store the results
+        combined_state_buffer = []
+        combined_cost_buffer = []
+        for result in results:
+            combined_state_buffer.extend(result[0])
+            combined_cost_buffer.extend(result[1])
 
-    # Save results to CSV
-    x0_costs = np.concatenate(results)
-    df = pd.DataFrame(x0_costs, columns=['q1', 'v1', 'q2', 'v2', 'Costs'])
-    df.to_csv('ocp_data_8.csv', mode='a', index=False, header=not os.path.exists('ocp_data_8.csv'))
+    else:
+        print("Single process execution")
+
+        # Full range of indices for single process
+        index_range = (0, len(initial_states))
+
+        # Start execution time
+        start_time = time.time()
+
+        # Process all initial states in a single call to ocp_task
+        state_buffer, cost_buffer = ocp_task(index_range, ocp_solver, initial_states)
+        
+        # End execution time
+        end_time = time.time()
+
+        # Store the results
+        combined_state_buffer = state_buffer
+        combined_cost_buffer = cost_buffer
+
+    # Time in nice format
+    total_time = end_time - start_time
+    hours = int(total_time // 3600)
+    minutes = int((total_time % 3600) // 60)
+    seconds = int(total_time % 60)
+    print("Total elapsed time:", hours, "h", minutes, "min", seconds, "s")
+
+    # Save data in a .csv file
+    ocp_solver.save_results(combined_state_buffer, combined_cost_buffer)
