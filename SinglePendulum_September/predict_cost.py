@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 # 1. Load the trained neural network model
-model = tf.keras.models.load_model('nn_SP_225_unconstr.h5')
+model = tf.keras.models.load_model('nn_SP_225_unconstr_tanh.h5')
 
 # 2. Load the original dataset
 data = pd.read_csv('ocp_data_SP_target_225_unconstr.csv')
@@ -26,6 +26,7 @@ scaler.fit(X_train)
 def scale_state(q, v):
     state = np.array([[q, v]])  # Create the input as a 2D array
     state_scaled = scaler.transform(state)  # Scale the input using the fitted scaler
+    print(f"scaled state: {state_scaled}")
     return state_scaled
 
 # 6. Define a function that takes position and velocity as input and returns the predicted cost
@@ -57,15 +58,41 @@ mae = mean_absolute_error(y_test, predicted_costs)
 r2 = r2_score(y_test, predicted_costs)
 
 # 11. Print the metrics for the test set
+print("\nTest Set Metrics:")
 print(f'Mean Squared Error (MSE) on Test Set: {mse}')
 print(f'Root Mean Squared Error (RMSE) on Test Set: {rmse}')
 print(f'Mean Absolute Error (MAE) on Test Set: {mae}')
 print(f'R² Score on Test Set: {r2}')
 
+# 9b. Calculate predictions for the training set
+predicted_costs_train = []
+for index, row in pd.DataFrame(X_train, columns=['position', 'velocity']).iterrows():
+    q = row['position']
+    v = row['velocity']
+    cost = predict_cost(q, v)
+    predicted_costs_train.append(cost)
+
+# Convert predictions to numpy array
+predicted_costs_train = np.array(predicted_costs_train)
+
+# 10b. Calculate evaluation metrics on the training set
+mse_train = mean_squared_error(y_train, predicted_costs_train)
+rmse_train = np.sqrt(mse_train)
+mae_train = mean_absolute_error(y_train, predicted_costs_train)
+r2_train = r2_score(y_train, predicted_costs_train)
+
+# 11b. Print the metrics for the training set
+print("\nTraining Set Metrics:")
+print(f'Mean Squared Error (MSE) on Training Set: {mse_train}')
+print(f'Root Mean Squared Error (RMSE) on Training Set: {rmse_train}')
+print(f'Mean Absolute Error (MAE) on Training Set: {mae_train}')
+print(f'R² Score on Training Set: {r2_train}')
+
 # Example of predicting for a specific state from the test set
-q_example = X_test[0][0]  # Take the first position from the test set
-v_example = X_test[0][1]  # Take the first velocity from the test set
+q_example = 4.734930525700089  # Example position
+v_example = -3.088021197064773  # Example velocity
 
 # Call the function to predict the cost
 cost_example = predict_cost(q_example, v_example)
-print(f"The cost associated with the state (position={q_example}, velocity={v_example}) is: {cost_example}")
+print(f"\nThe cost associated with the state (position={q_example}, velocity={v_example}) is: {cost_example}")
+

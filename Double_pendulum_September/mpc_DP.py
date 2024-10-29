@@ -24,7 +24,13 @@ class MpcDoublePendulum:
         self.model.load_weights(conf.nn)
         self.weights = self.model.get_weights()
         self.mean_x, self.std_x, self.mean_y, self.std_y = conf.init_scaler()
-    
+
+        # Print mean and std deviation for scaling
+        print("Scaler X Mean:", self.mean_x)
+        print("Scaler X std:", self.std_x)
+        print("Scaler y Mean:", self.mean_y)
+        print("Scaler y std:", self.std_y)
+
     def save_results(self, pos1, vel1, pos2, vel2, actual_inputs, total_costs, terminal_costs, filename):
         max_length = max(len(pos1), len(vel1), len(pos2), len(vel2), len(actual_inputs), len(total_costs), len(terminal_costs))
         pos1.extend([None] * (max_length - len(pos1)))
@@ -49,22 +55,27 @@ class MpcDoublePendulum:
         df.to_csv(filename, index=False)
 
     def nn_to_casadi(self, params, x):
-        out = np.array(x)
-        it = 0
+        out = np.array(x)  # Initialize the output as the normalized input (state vector)
+        it = 0  # Counter to distinguish between weights and biases
 
         for param in params:
-            param = np.array(param.tolist())
+            param = np.array(param.tolist())  # Convert the parameter to a numpy array
 
             if it % 2 == 0:
+                # If it's a weight layer, perform the product between the current output and the weights
                 out = out @ param
             else:
+                # If it's a bias layer, add the biases
                 out = param + out
-                for i, item in enumerate(out):
-                    out[i] = casadi.fmax(0., casadi.MX(out[i]))
+                
+                # Apply the 'tanh' activation function for every layer except the last one
+                if it < len(params) - 2:  # Skip the last layer (linear output)
+                    for i, item in enumerate(out):
+                        out[i] = casadi.tanh(casadi.MX(out[i]))
 
             it += 1
 
-        return casadi.MX(out[0])
+        return casadi.MX(out[0])  # Return the final output as a CasADi symbol
     
     def solve(self, x_init, X_guess=None, U_guess=None):
         self.opti = casadi.Opti()  # Initialize the optimizer
@@ -103,12 +114,13 @@ class MpcDoublePendulum:
                 self.opti.set_initial(u1[i], U_guess[0, i])
                 self.opti.set_initial(u2[i], U_guess[1, i])
 
-        state = [(q1[self.N] - self.mean_x[0])/self.std_x[0], (v1[self.N] - self.mean_x[1])/self.std_x[1], 
+        if conf.TC:
+            state = [(q1[self.N] - self.mean_x[0])/self.std_x[0], (v1[self.N] - self.mean_x[1])/self.std_x[1], 
                  (q2[self.N] - self.mean_x[2])/self.std_x[2], (v2[self.N] - self.mean_x[3])/self.std_x[3]]
+            self.terminal_cost = casadi.fabs(self.nn_to_casadi(self.weights, state))
         
         # Cost definition
         self.cost = 0
-        self.terminal_cost = self.nn_to_casadi(self.weights, state)
         self.running_costs = [None] * (self.N+1)
         for i in range(self.N+1):
             self.running_costs[i] = self.w_v1 * v1[i]**2 + self.w_v2 * v2[i]**2
@@ -119,7 +131,9 @@ class MpcDoublePendulum:
 
         # Adding terminal cost from the neural network
         if (conf.TC == 1):
-            self.cost +=  1e-4*self.terminal_cost    
+            self.cost +=  self.terminal_cost 
+
+        # Minimize the total cost   
         self.opti.minimize(self.cost)
 
         # Dynamics constraint
@@ -203,9 +217,10 @@ if __name__ == "__main__":
     mpc = MpcDoublePendulum()
 
     constr_status = "constrained" if conf.costraint else "unconstrained"
+    noise_status = "with noise" if conf.noise else "without noise"
     print("==========================")
     print(f"You're running the following test: target: q1 = {conf.q1_target}, q2 = {conf.q2_target}"
-          f"initial state: {conf.initial_state}, {constr_status} problem, TC = {conf.TC}, N = {conf.N}, T = {conf.T}")
+          f"initial state: {conf.initial_state}, {constr_status} problem, TC = {conf.TC}, N = {conf.N}, T = {conf.T}, {noise_status}")
 
     initial_state = conf.initial_state
     actual_trajectory = []      # Buffer to store actual trajectory
@@ -234,7 +249,11 @@ if __name__ == "__main__":
         new_input_guess[1, i] = sol.value(mpc.u2[i+1])
         
     for i in range(mpc_step):
-        init_state = actual_trajectory[i]
+        noise = np.random.normal(conf.mean, conf.std, actual_trajectory[i].shape)
+        if conf.noise:                                                                # Test also with noise to prove robustness
+            init_state = actual_trajectory[i] + noise
+        else:
+            init_state = actual_trajectory[i]
         try:
             sol = mpc.solve(init_state, new_state_guess, new_input_guess)
         except RuntimeError as e:
@@ -252,7 +271,9 @@ if __name__ == "__main__":
         actual_trajectory.append(np.array([sol.value(mpc.q1[1]), sol.value(mpc.v1[1]), sol.value(mpc.q2[1]), sol.value(mpc.v2[1])]))
         actual_inputs.append(np.array([sol.value(mpc.u1[0]), sol.value(mpc.u2[0])]))
         total_costs.append(sol.value(mpc.cost))
-        terminal_costs.append(sol.value(mpc.terminal_cost))
+
+        if conf.TC:
+            terminal_costs.append(sol.value(mpc.terminal_cost))
 
         for k in range(mpc.N):
             new_state_guess[0, k] = sol.value(mpc.q1[k+1])
@@ -304,12 +325,20 @@ if __name__ == "__main__":
     plot_and_save(input1, 'mpc step', 'u [N/m]', 'Torque_u1', os.path.join(output_dir, 'torque_plot-u1.png'))
     plot_and_save(input2, 'mpc step', 'u [N/m]', 'Torque_u2', os.path.join(output_dir, 'torque_plot-u2.png'))
     plot_and_save(total_costs, 'MPC Step', 'Total Cost', 'Total Cost', os.path.join(output_dir, 'total_cost_plot.png'))
-    plot_and_save(terminal_costs, 'MPC Step', 'Terminal Cost', 'Terminal Cost', os.path.join(output_dir, 'terminal_cost_plot.png'))
+    if conf.TC:
+        plot_and_save(terminal_costs, 'MPC Step', 'Terminal Cost', 'Terminal Cost', os.path.join(output_dir, 'terminal_cost_plot.png'))
 
     # Save data in a .csv file
-    if conf.TC:
-        filename = 'Plots_&_Animations/MPC_DoublePendulum_TC.csv'
+    if conf.TC and (conf.noise == 1):
+        filename = 'Plots_&_Animations/MPC_DoublePendulum_TC_noise.csv'
         mpc.save_results(positions_q1, velocities_v1, positions_q2, velocities_v2, actual_inputs, total_costs, terminal_costs, filename)
+        if conf.TC and (conf.noise == 0):
+            filename = 'Plots_&_Animations/MPC_DoublePendulum_TC.csv'
+            mpc.save_results(positions_q1, velocities_v1, positions_q2, velocities_v2, actual_inputs, total_costs, terminal_costs, filename)
     else:
-        filename = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_1.csv'
-        mpc.save_results(positions_q1, velocities_v1, positions_q2, velocities_v2, actual_inputs, terminal_costs, total_costs, filename)
+        if conf.scenario_type:
+            filename = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_1.csv'
+            mpc.save_results(positions_q1, velocities_v1, positions_q2, velocities_v2, actual_inputs, terminal_costs, total_costs, filename)
+        else:
+            filename = 'Plots_&_Animations/MPC_DoublePendulum_NTC_T_0.01.csv'
+            mpc.save_results(positions_q1, velocities_v1, positions_q2, velocities_v2, actual_inputs, terminal_costs, total_costs, filename)
